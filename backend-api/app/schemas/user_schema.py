@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from app.schemas.role_schema import RoleBase
 
 class Token(BaseModel):
@@ -26,12 +26,12 @@ class User(BaseModel):
 class UserInDB(User):
     hashed_password: str
 
-# class PaginatedUserResponse(BaseModel):
-#     users: List[User]
-#     total: int
-#     page: int
-#     limit: int
-#     total_pages: int
+class PaginatedUserResponse(BaseModel):
+    users: List[User]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
 
-#     class Config:
-#         from_attributes = True
+    class Config:
+        from_attributes = True

@@ -9,3 +9,7 @@
   --color-white-smoke: #F5F5F5;
   --color-dark-charcoal: #333333;
 }
+
+html {
+scrollbar-gutter: stable;
+}

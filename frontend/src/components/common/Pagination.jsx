@@ -76,7 +76,7 @@ const Pagination = memo(function Pagination({
 
   return (
     <nav
-      className="w-full bg-[#e6f0fa] py-2 px-4 flex justify-between items-center text-sm text-gray-700 font-medium rounded-b-lg border-t flex-shrink-0"
+      className="w-full bg-[#e6f0fa] py-2 px-4 flex justify-between items-center text-sm text-gray-700 font-medium rounded-b-lg border-t border-gray-200 flex-shrink-0"
       aria-label="Pagination Navigation"
     >
       <span className="text-gray-600" aria-live="polite">

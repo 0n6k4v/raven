@@ -29,10 +29,15 @@ const roleMapping = {
   'supervisor': 'ผู้ดูแล',
 };
 
+/* HELPERS */
+function getUserId(user) {
+  return user?.user_id ?? null;
+}
+
 /* UTILS */
 function filterUsers(users, searchTerm, appliedFilters) {
   let filtered = users;
-  const term = searchTerm.trim().toLowerCase();
+  const term = (searchTerm || '').trim().toLowerCase();
   if (term) {
     filtered = filtered.filter(user =>
       (user.firstname && user.firstname.toLowerCase().includes(term)) ||
@@ -41,17 +46,18 @@ function filterUsers(users, searchTerm, appliedFilters) {
       ((user.firstname && user.lastname) && `${user.firstname} ${user.lastname}`.toLowerCase().includes(term))
     );
   }
-  if (appliedFilters.role.length) {
+  if (appliedFilters.role && appliedFilters.role.length) {
     filtered = filtered.filter(user =>
-      user.role && appliedFilters.role.some(role =>
-        user.role.toLowerCase() === role.toLowerCase()
+      (user.role && (user.role.role_name || user.role).toString().toLowerCase()) &&
+      appliedFilters.role.some(role =>
+        (user.role.role_name ?? user.role).toString().toLowerCase() === role.toLowerCase()
       )
     );
   }
-  if (appliedFilters.department.length) {
+  if (appliedFilters.department && appliedFilters.department.length) {
     filtered = filtered.filter(user =>
       user.department && appliedFilters.department.some(dept =>
-        user.department.toLowerCase() === dept.toLowerCase()
+        user.department.toString().toLowerCase() === dept.toLowerCase()
       )
     );
   }
@@ -60,10 +66,10 @@ function filterUsers(users, searchTerm, appliedFilters) {
 
 function getFilterLabels(appliedFilters) {
   const labels = [];
-  appliedFilters.role.forEach(role => {
+  (appliedFilters.role || []).forEach(role => {
     labels.push({ type: 'role', value: role, label: `ตำแหน่ง: ${roleMapping[role] || role}` });
   });
-  appliedFilters.department.forEach(dept => {
+  (appliedFilters.department || []).forEach(dept => {
     labels.push({ type: 'department', value: dept, label: `ประเภทการใช้งาน: ${dept}` });
   });
   return labels;
@@ -79,34 +85,39 @@ function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [popup, setPopup] = useState({ open: false, type: '', message: '', user: null });
   const [popupCountdown, setPopupCountdown] = useState(5);
-  const [filters, setFilters] = useState(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(() => ({ ...initialFilters }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({ ...initialFilters }));
   const [filteredUsers, setFilteredUsers] = useState([]);
   const navigate = useNavigate();
 
-  // Fetch users on mount
+  // Fetch users on mount with AbortController
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/users/list`)
-      .then(res => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    async function fetchUsers() {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/list`, { signal });
         if (!res.ok) throw new Error('Network response was not ok ' + res.statusText);
-        return res.json();
-      })
-      .then(data => {
+        const data = await res.json();
         const userData = Array.isArray(data) ? data : (data.users || []);
         setUsers(userData);
         setFilteredUsers(userData);
         setLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
+        if (err.name === 'AbortError') return;
         setUsers([]);
         setFilteredUsers([]);
         setLoading(false);
-      });
+      }
+    }
+
+    fetchUsers();
+    return () => controller.abort();
   }, []);
 
   // Filter users when search/filter changes
   useEffect(() => {
-    if (!users.length) return;
     setFilteredUsers(filterUsers(users, searchTerm, appliedFilters));
     setCurrentPage(1);
   }, [appliedFilters, users, searchTerm]);
@@ -137,19 +148,28 @@ function useUserManagement() {
   }, []);
 
   const handleViewDetail = useCallback(user => {
-    navigate(`/user-profile/${user.id}`);
+    const id = getUserId(user);
+    if (!id) return;
+    navigate(`/user-profile/${id}`);
   }, [navigate]);
 
   const handleEdit = useCallback(user => {
-    navigate(`/edit-user/${user.id}`);
+    const id = getUserId(user);
+    if (!id) return;
+    navigate(`/edit-user/${id}`);
   }, [navigate]);
 
   const handleDeleteClick = useCallback(user => {
-    setPopup({ open: true, type: 'confirm', message: `ยืนยันการลบผู้ใช้ ${user.firstname} ${user.lastname} ?`, user });
+    setPopup({ open: true, type: 'confirm', message: `ยืนยันการลบผู้ใช้ ${user.firstname || ''} ${user.lastname || ''} ?`, user });
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     const user = popup.user;
+    if (!user) {
+      setPopup(prev => ({ ...prev, open: false }));
+      return;
+    }
+    const id = getUserId(user);
     setPopup(prev => ({ ...prev, open: false }));
     try {
       const token = localStorage.getItem('token');
@@ -158,7 +178,7 @@ function useUserManagement() {
         setPopup({ open: true, type: 'fail', message: 'กรุณาเข้าสู่ระบบเพื่อทำรายการนี้', user: null });
         return;
       }
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -166,7 +186,8 @@ function useUserManagement() {
         }
       });
       if (res.ok) {
-        setUsers(prev => prev.filter(u => u.id !== user.id));
+        setUsers(prev => prev.filter(u => getUserId(u) !== id));
+        setFilteredUsers(prev => prev.filter(u => getUserId(u) !== id));
         setPopupCountdown(5);
         setPopup({ open: true, type: 'success', message: 'ลบผู้ใช้สำเร็จ', user: null });
       } else {
@@ -181,41 +202,39 @@ function useUserManagement() {
   }, [popup]);
 
   const handleApplyFilters = useCallback(newFilters => {
-    setAppliedFilters(newFilters);
-    setFilters(newFilters);
+    setAppliedFilters({ ...(newFilters || {}) });
+    setFilters({ ...(newFilters || {}) });
   }, []);
 
   const handleClearFilters = useCallback(() => {
-    setAppliedFilters(initialFilters);
-    setFilters(initialFilters);
+    setAppliedFilters({ ...initialFilters });
+    setFilters({ ...initialFilters });
     setIsFilterOpen(false);
   }, []);
 
   const removeFilter = useCallback((type, value) => {
     setAppliedFilters(prev => {
-      const updated = { ...prev };
-      updated[type] = updated[type].filter(item => item !== value);
+      const updated = { ...prev, [type]: (prev[type] || []).filter(item => item !== value) };
       return updated;
     });
     setFilters(prev => {
-      const updated = { ...prev };
-      updated[type] = updated[type].filter(item => item !== value);
+      const updated = { ...prev, [type]: (prev[type] || []).filter(item => item !== value) };
       return updated;
     });
   }, []);
 
   const handlePageChange = useCallback(pageNumber => {
-    if (pageNumber < 1 || pageNumber > Math.ceil(filteredUsers.length / rowsPerPage)) return;
+    if (pageNumber < 1 || pageNumber > Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage))) return;
     setCurrentPage(pageNumber);
   }, [filteredUsers.length, rowsPerPage]);
 
   const handleRowsPerPageChange = useCallback(e => {
-    setRowsPerPage(parseInt(e.target.value));
+    setRowsPerPage(parseInt(e.target.value, 10) || 10);
     setCurrentPage(1);
   }, []);
 
   // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentUsers = useMemo(
@@ -273,12 +292,12 @@ const FilterPopup = memo(function FilterPopup({
   onClearFilters,
   onApplyFilters,
 }) {
-  const [localFilters, setLocalFilters] = useState(filters);
+  const [localFilters, setLocalFilters] = useState(() => ({ ...filters }));
   const [sectionsOpen, setSectionsOpen] = useState({ role: true, department: true });
 
   useEffect(() => {
     if (isOpen) {
-      setLocalFilters(filters);
+      setLocalFilters({ ...(filters || {}) });
       setSectionsOpen({ role: true, department: true });
     }
   }, [isOpen, filters]);
@@ -293,8 +312,8 @@ const FilterPopup = memo(function FilterPopup({
     setLocalFilters(prev => ({
       ...prev,
       [type]: checked
-        ? [...prev[type], value]
-        : prev[type].filter(item => item !== value)
+        ? [...(prev[type] || []), value]
+        : (prev[type] || []).filter(item => item !== value)
     }));
   }, []);
 
@@ -304,16 +323,16 @@ const FilterPopup = memo(function FilterPopup({
   }, [localFilters, onApplyFilters, onClose]);
 
   const handleClose = useCallback(() => {
-    setLocalFilters(filters);
+    setLocalFilters({ ...(filters || {}) });
     onClose();
   }, [filters, onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg shadow-lg flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4" role="dialog" aria-modal="true" aria-label="ตัวกรองผู้ใช้งาน">
+      <div className="bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg shadow-lg border border-gray-200 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
           <h2 className="text-xl md:text-2xl font-semibold">เลือกตัวกรองผลลัพธ์</h2>
-          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700" aria-label="ปิดตัวกรอง">
             <FiX size={24} />
           </button>
         </div>
@@ -322,6 +341,7 @@ const FilterPopup = memo(function FilterPopup({
             <button
               onClick={() => toggleSection('role')}
               className="flex justify-between items-center w-full font-semibold mb-3 text-left"
+              aria-expanded={sectionsOpen.role}
             >
               ตำแหน่ง
               {sectionsOpen.role ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
@@ -335,8 +355,9 @@ const FilterPopup = memo(function FilterPopup({
                         type="checkbox"
                         className="w-4 h-4 accent-[#b30000]"
                         value={option.value}
-                        checked={localFilters.role.includes(option.value)}
+                        checked={(localFilters.role || []).includes(option.value)}
                         onChange={e => handleCheckboxChange('role', option.value, e.target.checked)}
+                        aria-label={`ตำแหน่ง ${option.label}`}
                       /> {option.label}
                     </label>
                   ))}
@@ -348,6 +369,7 @@ const FilterPopup = memo(function FilterPopup({
             <button
               onClick={() => toggleSection('department')}
               className="flex justify-between items-center w-full font-semibold mb-3 text-left"
+              aria-expanded={sectionsOpen.department}
             >
               ประเภทการใช้งาน
               {sectionsOpen.department ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
@@ -361,8 +383,9 @@ const FilterPopup = memo(function FilterPopup({
                         type="checkbox"
                         className="w-4 h-4 accent-[#b30000]"
                         value={option.value}
-                        checked={localFilters.department.includes(option.value)}
+                        checked={(localFilters.department || []).includes(option.value)}
                         onChange={e => handleCheckboxChange('department', option.value, e.target.checked)}
+                        aria-label={`ประเภทการใช้งาน ${option.label}`}
                       /> {option.label}
                     </label>
                   ))}
@@ -374,13 +397,15 @@ const FilterPopup = memo(function FilterPopup({
         <div className="flex flex-col sm:flex-row justify-between p-4 border-t gap-3 flex-shrink-0 bg-white">
           <button
             onClick={onClearFilters}
-            className="w-full sm:w-auto px-4 py-2 border rounded-lg text-[#b30000] border-[#b30000] hover:bg-red-50 order-2 sm:order-1"
+            className="w-full sm:w-auto px-4 py-2 border rounded-lg text-[#b30000] border-red-600 hover:bg-red-50/30 order-2 sm:order-1"
+            aria-label="ล้างการคัดกรองทั้งหมด"
           >
             ล้างการคัดกรองทั้งหมด
           </button>
           <button
             onClick={handleApply}
             className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#b30000] text-white hover:bg-[#990000] order-1 sm:order-2"
+            aria-label="คัดกรองผลลัพธ์"
           >
             คัดกรองผลลัพธ์
           </button>
@@ -412,23 +437,23 @@ const Popup = memo(function Popup({
     color = 'text-red-600';
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg shadow-lg flex flex-col items-center justify-center w-80 h-64 relative">
-        {(type === 'success' || type === 'fail') && (
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-            aria-label="ปิด"
-          >
-            <FiX size={22} />
-          </button>
-        )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" role="dialog" aria-modal="true" aria-label="แจ้งเตือน">
+      <div className="bg-white rounded-lg shadow-lg flex flex-col items-center justify-center w-80 h-64 relative border border-gray-200">
+         {(type === 'success' || type === 'fail') && (
+           <button
+             onClick={onClose}
+             className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+             aria-label="ปิดแจ้งเตือน"
+           >
+             <FiX size={22} />
+           </button>
+         )}
         {icon}
         <div className={`font-semibold text-lg mb-4 mt-2 text-center ${color}`}>{message}</div>
         {type === 'confirm' && (
           <div className="flex gap-4 mt-2">
-            <button onClick={onCancel} className="px-4 py-2 rounded border">ยกเลิก</button>
-            <button onClick={onConfirm} className="px-4 py-2 rounded bg-red-600 text-white">ยืนยัน</button>
+            <button onClick={onCancel} className="px-4 py-2 rounded border" aria-label="ยกเลิก">ยกเลิก</button>
+            <button onClick={onConfirm} className="px-4 py-2 rounded bg-red-600 text-white" aria-label="ยืนยันลบ">ยืนยัน</button>
           </div>
         )}
         {(type === 'success' || type === 'fail') && (
@@ -447,11 +472,12 @@ const SearchBox = memo(function SearchBox({ searchTerm, onSearchChange }) {
       <input
         type="text"
         placeholder="ค้นหาโดยชื่อผู้ใช้..."
-        className="w-full pl-10 pr-4 py-2 border rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100"
+        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100"
         value={searchTerm}
         onChange={onSearchChange}
+        aria-label="ค้นหาโดยชื่อผู้ใช้"
       />
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="text-gray-400" viewBox="0 0 16 16">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a.007.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
         </svg>
@@ -461,13 +487,13 @@ const SearchBox = memo(function SearchBox({ searchTerm, onSearchChange }) {
 });
 
 const FilterTags = memo(function FilterTags({ labels, onRemove }) {
-  if (!labels.length) return null;
+  if (!labels || !labels.length) return null;
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-2 mb-4" role="list" aria-label="ตัวกรองที่เลือก">
       {labels.map((item, index) => (
-        <div key={`${item.type}-${item.value}-${index}`} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm">
+        <div key={`${item.type}-${item.value}-${index}`} className="flex items-center bg-gray-50 border border-gray-200 rounded-full px-3 py-1 text-sm" role="listitem">
           <span>{item.label}</span>
-          <button onClick={() => onRemove(item.type, item.value)} className="ml-2 text-gray-500 hover:text-red-500">
+          <button onClick={() => onRemove(item.type, item.value)} className="ml-2 text-gray-500 hover:text-red-500" aria-label={`ลบตัวกรอง ${item.label}`}>
             <FiX size={16} />
           </button>
         </div>
@@ -496,13 +522,20 @@ const DesktopLayout = memo(function DesktopLayout(props) {
       <div className="px-6 flex justify-between items-center mb-4 flex-shrink-0">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <SearchBox searchTerm={searchTerm} onSearchChange={handleSearch} />
-          <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 px-4 py-2 border rounded bg-white hover:bg-gray-100 whitespace-nowrap">
-            <FiFilter size={18} /> ตัวกรอง
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100 whitespace-nowrap"
+            aria-label="เปิดตัวกรอง"
+            type="button"
+          >
+            <FiFilter size={18} /> ตัวกรกร
           </button>
         </div>
         <button
           onClick={() => navigate('/createUser')}
-          className="flex items-center gap-2 px-4 py-2 rounded bg-[#b30000] text-white hover:bg-[#990000]">
+          className="flex items-center gap-2 px-4 py-2 rounded bg-[#b30000] text-white hover:bg-[#990000]"
+          aria-label="เพิ่มผู้ใช้"
+        >
           <FiPlus size={18} />
           <b>เพิ่มผู้ใช้</b>
         </button>
@@ -511,9 +544,9 @@ const DesktopLayout = memo(function DesktopLayout(props) {
         <FilterTags labels={filterLabels} onRemove={removeFilter} />
       </div>
       <div className="px-6 pb-6 flex flex-col flex-grow overflow-hidden">
-        <div className="bg-white rounded shadow-md flex flex-col flex-grow overflow-hidden">
+        <div className="bg-white rounded shadow-md border border-gray-200 flex flex-col flex-grow overflow-hidden">
           <div className="flex-grow overflow-auto">
-            <table className="w-full table-fixed border-collapse">
+            <table className="w-full table-fixed border-collapse" role="table" aria-label="ตารางผู้ใช้งาน">
               <thead>
                 <tr className="bg-gray-200 sticky top-0 z-[5]">
                   <th className="p-3 text-left font-semibold w-[20%]">รหัสประจำตัวผู้ใช้:</th>
@@ -533,27 +566,30 @@ const DesktopLayout = memo(function DesktopLayout(props) {
                 </tbody>
               ) : currentUsers.length > 0 ? (
                 <tbody>
-                  {currentUsers.map((user, index) => (
-                    <tr key={user.user_code || index} className="border-t hover:bg-red-50 transition-colors">
-                      <td className="p-3">{user.user_id}</td>
-                      <td className="p-3">{user.role?.role_name || '-'}</td>
-                      <td className="p-3">{user.title} {user.firstname} {user.lastname}</td>
-                      <td className="p-3">{user.department}</td>
-                      <td className="p-3">
-                        <div className="flex justify-center gap-4">
-                          <button title="ดูรายละเอียด" onClick={() => handleViewDetail(user)} className="text-blue-600 hover:text-blue-800">
-                            <FiEye size={18} />
-                          </button>
-                          <button title="แก้ไข" className="text-yellow-600 hover:text-yellow-800" onClick={() => handleEdit(user)}>
-                            <FiEdit size={18} />
-                          </button>
-                          <button title="ลบ" className="text-red-600 hover:text-red-800" onClick={() => handleDeleteClick(user)}>
-                            <FiTrash size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {currentUsers.map((user, index) => {
+                    const key = getUserId(user) ?? user.user_code ?? index;
+                    return (
+                      <tr key={key} className="border-t border-gray-200 hover:bg-red-50 transition-colors">
+                        <td className="p-3">{getUserId(user) ?? '-'}</td>
+                        <td className="p-3">{user.role?.role_name ?? (user.role || '-')}</td>
+                        <td className="p-3">{`${user.title || ''} ${user.firstname || ''} ${user.lastname || ''}`.trim() || '-'}</td>
+                        <td className="p-3">{user.department || '-'}</td>
+                        <td className="p-3">
+                          <div className="flex justify-center gap-4">
+                            <button title="ดูรายละเอียด" onClick={() => handleViewDetail(user)} className="text-blue-600 hover:text-blue-800" aria-label="ดูรายละเอียดผู้ใช้">
+                              <FiEye size={18} />
+                            </button>
+                            <button title="แก้ไข" className="text-yellow-600 hover:text-yellow-800" onClick={() => handleEdit(user)} aria-label="แก้ไขผู้ใช้">
+                              <FiEdit size={18} />
+                            </button>
+                            <button title="ลบ" className="text-red-600 hover:text-red-800" onClick={() => handleDeleteClick(user)} aria-label="ลบผู้ใช้">
+                              <FiTrash size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               ) : (
                 <tbody>
@@ -604,94 +640,113 @@ const MobileLayout = memo(function MobileLayout(props) {
         <FaUser className="text-xl" />
         <h1 className="text-xl font-bold">ผู้ใช้งาน</h1>
       </div>
-      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col gap-2 mb-4">
         <SearchBox searchTerm={searchTerm} onSearchChange={handleSearch} />
         <div className="flex justify-between items-center">
-          <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 px-3 py-1 border rounded bg-white hover:bg-gray-100">
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="flex items-center gap-2 px-3 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100"
+            aria-label="เปิดตัวกรอง"
+            type="button"
+          >
             <FiFilter size={16} /> ตัวกรอง
           </button>
           <button
             onClick={() => navigate('/createUser')}
-            className="flex items-center gap-2 px-3 py-1 rounded bg-[#b30000] text-white hover:bg-[#990000]">
+            className="flex items-center gap-2 px-3 py-1 rounded bg-[#b30000] text-white hover:bg-[#990000] focus:outline-none focus:ring-2 focus:ring-red-100"
+            aria-label="เพิ่มผู้ใช้"
+            type="button"
+          >
             <FiPlus size={16} />
             <b>เพิ่มผู้ใช้</b>
           </button>
         </div>
       </div>
       <FilterTags labels={filterLabels} onRemove={removeFilter} />
-      <div className="bg-white rounded shadow overflow-auto flex-grow mb-24">
+      <div className="bg-white rounded-t shadow overflow-auto border border-gray-200 flex-grow">
         {loading ? (
           <div className="p-4 text-center text-gray-500">
             กำลังโหลด...
           </div>
         ) : currentUsers.length > 0 ? (
-          <div className="divide-y">
-            {currentUsers.map((user, index) => (
-              <div key={user.user_code || index} className="p-3 flex items-center relative">
-                <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center text-gray-500 overflow-hidden">
-                  {user.profile_image_url ? (
-                    <img
-                      src={user.profile_image_url}
-                      alt="profile"
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  ) : (
-                    user.firstname ? user.firstname.charAt(0).toUpperCase() : '?'
-                  )}
-                </div>
-                <div className="ml-3 flex-grow">
-                  <div className="font-semibold">{user.title} {user.firstname} {user.lastname}</div>
-                  <div className="text-xs text-gray-500">รหัส: {user.user_code}</div>
-                  <div className="text-xs text-gray-500">
-                    {user.role?.role_name || '-'} · {user.department}
+          <div className="divide-y divide-gray-200">
+            {currentUsers.map((user, index) => {
+              const id = getUserId(user);
+              const key = id ?? user.user_code ?? index;
+              return (
+                <div key={key} className="p-3 flex items-center relative">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center text-gray-500 overflow-hidden">
+                    {user.profile_image_url ? (
+                      <img
+                        src={user.profile_image_url}
+                        alt="profile"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      user.firstname ? user.firstname.charAt(0).toUpperCase() : '?'
+                    )}
+                  </div>
+                  <div className="ml-3 flex-grow">
+                    <div className="font-semibold">{`${user.title || ''} ${user.firstname || ''} ${user.lastname || ''}`.trim() || '-'}</div>
+                    <div className="text-xs text-gray-500">รหัส: {id ?? user.user_code ?? '-'}</div>
+                    <div className="text-xs text-gray-500">
+                      {user.role?.role_name ?? (user.role || '-')} · {user.department || '-'}
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <button
+                      className="p-2"
+                      onClick={() => toggleActionMenu(id)}
+                      aria-haspopup="true"
+                      aria-expanded={activeMenu === id}
+                      aria-label="เมนูการกระทำ"
+                      tabIndex={0}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                      </svg>
+                    </button>
+                    {activeMenu === id && (
+                      <div className="absolute right-0 z-10 w-36 bg-white rounded shadow-lg border border-gray-200" role="menu">
+                        <button
+                          onClick={() => {
+                            handleViewDetail(user);
+                            setActiveMenu(null);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                          role="menuitem"
+                        >
+                          <FiEye size={16} className="text-blue-600" />
+                          <span>ดูรายละเอียด</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            handleEdit(user);
+                            setActiveMenu(null);
+                          }}
+                          role="menuitem"
+                        >
+                          <FiEdit size={16} className="text-yellow-600" />
+                          <span>แก้ไข</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            handleDeleteClick(user);
+                            setActiveMenu(null);
+                          }}
+                          role="menuitem"
+                        >
+                          <FiTrash size={16} className="text-red-600" />
+                          <span>ลบ</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="relative">
-                  <button
-                    className="p-2"
-                    onClick={() => toggleActionMenu(user.user_id)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-                    </svg>
-                  </button>
-                  {activeMenu === user.user_id && (
-                    <div className="absolute right-0 z-10 w-36 bg-white rounded shadow-lg border">
-                      <button
-                        onClick={() => {
-                          handleViewDetail(user);
-                          setActiveMenu(null);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
-                      >
-                        <FiEye size={16} className="text-blue-600" />
-                        <span>ดูรายละเอียด</span>
-                      </button>
-                      <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
-                        onClick={() => {
-                          handleEdit(user);
-                          setActiveMenu(null);
-                        }}
-                      >
-                        <FiEdit size={16} className="text-yellow-600" />
-                        <span>แก้ไข</span>
-                      </button>
-                      <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
-                        onClick={() => {
-                          handleDeleteClick(user);
-                          setActiveMenu(null);
-                        }}
-                      >
-                        <FiTrash size={16} className="text-red-600" />
-                        <span>ลบ</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-4 text-center text-gray-500">

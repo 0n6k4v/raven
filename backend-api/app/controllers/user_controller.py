@@ -1,49 +1,46 @@
-# from sqlalchemy.ext.asyncio import AsyncSession
-# from typing import Optional, List
-# from app.models.user_model.py import User
-# from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, List, Union
+from app.models.user_model import User
+from sqlalchemy import select, func, or_
+from sqlalchemy.orm import selectinload
 
-# async def get_all_users(
-#     db: AsyncSession,
-#     skip: int = 0,
-#     limit: int = 100,
-#     search: Optional[str] = None,
-#     role_id: Optional[int] = None,
-#     count_only: bool = False
-# ) -> Union[List[User], int]:
-#     Args:
-#         db: Database session
-#         skip: Number of records to skip for pagination
-#         limit: Maximum number of records to return
-#         search: Optional search string to filter users
-#         role_id: Optional role ID to filter users
-#         count_only: If True, return only the count of users
-#     Returns:
-#         Either a list of users or the count of users matching the criteria
-    
-#     query = select(User).options(selectinload(User.role), selectinload(User.permissions))
+async def get_all_users(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    role_id: Optional[int] = None,
+    count_only: bool = False
+) -> Union[List[User], int]:
+    filters = []
 
-#     if search:
-#         search_term = f"%{search}%"
-#         query = query.where(
-#             or_(
-#                 User.firstname.ilike(search_term),
-#                 User.lastname.ilike(search_term),
-#                 User.email.ilike(search_term),
-#                 User.user_id.ilike(search_term),
-#                 User.department.ilike(search_term)
-#             )
-#         )
-    
-#     if role_id:
-#         query = query.where(User.role_id == role_id)
+    if search:
+        term = f"%{search}%"
+        filters.append(
+            or_(
+                User.firstname.ilike(term),
+                User.lastname.ilike(term),
+                User.email.ilike(term),
+                User.user_id.ilike(term),
+                User.department.ilike(term),
+            )
+        )
 
-#     if count_only:
-#         count_query = select(func.count()).select_from(query.subquery())
-#         result = await db.execute(count_query)
-#         return result.scalar()
+    if role_id:
+        filters.append(User.role_id == role_id)
 
-#     query = query.offset(skip).limit(limit)
+    if count_only:
+        count_q = select(func.count()).select_from(User)
+        if filters:
+            count_q = count_q.where(*filters)
+        res = await db.execute(count_q)
+        return res.scalar() or 0
 
-#     result = await db.execute(query)
-#     return result.scalars().all()
+    query = select(User).options(selectinload(User.role))
+    if filters:
+        query = query.where(*filters)
+
+    query = query.offset(skip).limit(limit)
+
+    result = await db.execute(query)
+    return result.scalars().all()
