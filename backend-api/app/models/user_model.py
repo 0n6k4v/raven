@@ -2,6 +2,7 @@ from app.models.base import Base
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.role_model import Role
+from app.models.user_permission_model import UserPermission
 
 class User(Base):
     __tablename__ = "users"
@@ -23,3 +24,5 @@ class User(Base):
     #Relationships
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False, index=True)
     role = relationship(Role, back_populates="users", lazy="joined")
+
+    permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")

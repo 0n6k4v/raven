@@ -29,6 +29,8 @@ const roleMapping = {
   'supervisor': 'ผู้ดูแล',
 };
 
+const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+
 /* HELPERS */
 function getUserId(user) {
   return user?.user_id ?? null;
@@ -97,7 +99,7 @@ function useUserManagement() {
 
     async function fetchUsers() {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/list`, { signal });
+        const res = await fetch(`${BASE_URL}/users/list`, { signal });
         if (!res.ok) throw new Error('Network response was not ok ' + res.statusText);
         const data = await res.json();
         const userData = Array.isArray(data) ? data : (data.users || []);
@@ -528,7 +530,7 @@ const DesktopLayout = memo(function DesktopLayout(props) {
             aria-label="เปิดตัวกรอง"
             type="button"
           >
-            <FiFilter size={18} /> ตัวกรกร
+            <FiFilter size={18} /> ตัวกรอง
           </button>
         </div>
         <button

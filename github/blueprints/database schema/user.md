@@ -14,3 +14,13 @@ CREATE TABLE public.users (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+
+CREATE TABLE public.user_permissions (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    permission_type character varying(50) NOT NULL,
+    granted boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);

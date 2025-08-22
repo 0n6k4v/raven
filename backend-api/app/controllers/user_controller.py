@@ -44,3 +44,14 @@ async def get_all_users(
 
     result = await db.execute(query)
     return result.scalars().all()
+
+async def get_user_by_user_id(db: AsyncSession, user_id: str):
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role), selectinload(User.permissions))
+        .where(User.user_id == str(user_id))
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
