@@ -3,6 +3,10 @@ from sqlalchemy import select
 from app.models.role_model import Role
 from fastapi import HTTPException, status
 
+async def get_all_roles(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(Role).offset(skip).limit(limit))
+    return result.scalars().all()
+
 async def get_role_by_id(db: AsyncSession, role_id: int):
     result = await db.execute(
         select(Role).where(Role.id == role_id).limit(1)

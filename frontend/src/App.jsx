@@ -7,8 +7,9 @@ const Layout = lazy(() => import('./components/layout/Layout'))
 const ProtectedRoute = lazy(() => import('./components/common/ProtectedRoute'))
 const Login = lazy(() => import('./pages/Login'))
 const Home = lazy(() => import('./pages/Home'))
+const CreateUser = lazy(() => import('./pages/Admin/SuperAdmin/CreateUser'))
 const UserManagement = lazy(() => import('./pages/Admin/SuperAdmin/UserManagement'))
-const UserProfile = lazy(() => import('./components/Admin/SuperAdmin/UserManagement/UserProfile'))
+const UserProfile = lazy(() => import('./pages/Admin/SuperAdmin/UserProfile'))
 const Map = lazy(() => import('./pages/Map'))
 const Camera = lazy(() => import('./pages/Camera'))
 
@@ -28,10 +29,14 @@ const App = memo(function App() {
             </ProtectedRoute>
           }
         >
+          {/* Common Pages */}
           <Route path='/home' element={<Home />} />
+          <Route path='/map' element={<Map />} />
+
+          {/* Super Admin Pages */}
+          <Route path='/createUser' element={<CreateUser />} />
           <Route path='/userManagement' element={<UserManagement />} />
           <Route path='/user-profile/:id' element={<UserProfile />} />
-          <Route path='/map' element={<Map />} />
         </Route>
 
         {/* Fallback route for unmatched paths */}

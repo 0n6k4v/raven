@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Pagination from '../../../components/common/Pagination';
 
 /* CONSTANTS */
+const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 const initialFilters = { role: [], department: [] };
 const roleOptions = [
   { value: 'admin', label: 'แอดมิน' },
@@ -28,8 +29,6 @@ const roleMapping = {
   'officer': 'เจ้าหน้าที่',
   'supervisor': 'ผู้ดูแล',
 };
-
-const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 /* HELPERS */
 function getUserId(user) {
