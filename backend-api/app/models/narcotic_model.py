@@ -4,7 +4,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
-from app.models.exhibit_model import Exhibit
 
 class ChemicalCompound(Base):
     __tablename__ = "chemical_compounds"
@@ -14,18 +13,6 @@ class ChemicalCompound(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_chemical_compounds_id", "id"),)
-
-class DrugForm(Base):
-    __tablename__ = "drug_forms"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-
-    narcotics: Mapped[list["Narcotic"]] = relationship(
-        back_populates="drug_form", cascade="all, delete-orphan"
-    )
-
-    __table_args__ = (Index("ix_drug_forms_id", "id"),)
 
 class Narcotic(Base):
     __tablename__ = "narcotics"

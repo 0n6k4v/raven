@@ -42,7 +42,11 @@ const useNarcotics = () => {
         abortRef.current = controller;
 
         try {
-            const res = await fetch(`${BASE_URL}/narcotics`, { signal: controller.signal });
+            const res = await fetch(`${BASE_URL}/narcotics`, {
+                signal: controller.signal,
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const data = await res.json();
             const mapped = (Array.isArray(data) ? data : []).map(mapNarcotic);
@@ -66,7 +70,8 @@ const useNarcotics = () => {
         try {
             const res = await fetch(`${BASE_URL}/narcotics/${id}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             });
             if (!res.ok) {
                 const errorText = await res.text();

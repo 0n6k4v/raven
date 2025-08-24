@@ -21,15 +21,232 @@ const isPackageForm = (evidenceType) => {
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 // ==================== CUSTOM HOOKS ====================
-const getDrugForms = async () => {
-  try {
-    const response = await api.get(`${BASE_URL}/drug-forms`);
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching drug forms:', error);
-    throw error;
-  }
+const useDrugForms = () => {
+  const [drugForms, setDrugForms] = useState([]);
+  const [isLoadingDrugForms, setIsLoadingDrugForms] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchDrugForms = useCallback(async () => {
+    setIsLoadingDrugForms(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE_URL}/drug-forms`, { credentials: 'include' });
+      const data = await (res.headers.get('Content-Type')?.includes('application/json') ? res.json() : null);
+      if (!res.ok) {
+        const err = new Error('Fetch error');
+        err.response = { status: res.status, data };
+        throw err;
+      }
+      setDrugForms(data || []);
+    } catch (err) {
+      console.error('Error fetching drug forms:', err);
+      setError(err);
+    } finally {
+      setIsLoadingDrugForms(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (mounted) fetchDrugForms();
+    return () => { mounted = false; };
+  }, [fetchDrugForms]);
+
+  return { drugForms, isLoadingDrugForms, error, refresh: fetchDrugForms };
+};
+
+const useImageHandlers = () => {
+  const [images, setImages] = useState([]);
+  const [actualImages, setActualImages] = useState([]);
+  const [selectedThumb, setSelectedThumb] = useState(0);
+
+  const handleImageUpload = useCallback((e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const imageUrls = files.map(file => URL.createObjectURL(file));
+    setImages(prev => [...prev, ...imageUrls]);
+    setActualImages(prev => [...prev, ...files]);
+    setSelectedThumb(prev => Math.max(0, prev));
+  }, []);
+
+  const handleRemoveImage = useCallback((index) => {
+    setImages(prev => {
+      const updated = [...prev];
+      updated.splice(index, 1);
+      return updated;
+    });
+    setActualImages(prev => {
+      const updated = [...prev];
+      updated.splice(index, 1);
+      return updated;
+    });
+    setSelectedThumb(prev => {
+      const newLen = Math.max(0, images.length - 1);
+      return Math.max(0, Math.min(prev, newLen - 1));
+    });
+  }, [images.length]);
+
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (!active || !over) return;
+    if (active.id !== over.id) {
+      const oldIndex = images.findIndex(img => img === active.id);
+      const newIndex = images.findIndex(img => img === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      setImages(prev => arrayMove(prev, oldIndex, newIndex));
+      setActualImages(prev => arrayMove(prev, oldIndex, newIndex));
+      setSelectedThumb(newIndex);
+    }
+  }, [images]);
+
+  return {
+    images, setImages,
+    actualImages, setActualImages,
+    selectedThumb, setSelectedThumb,
+    handleImageUpload, handleRemoveImage, handleDragEnd
+  };
+};
+
+const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, navigate }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  const safeJson = async (res) => {
+    const ct = res.headers.get('Content-Type') || '';
+    if (ct.includes('application/json')) return res.json();
+    return null;
+  };
+
+  const handleSubmit = useCallback(async (e) => {
+    e?.preventDefault();
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      // create exhibit
+      const exhibitRes = await fetch(`${BASE_URL}/exhibits`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exhibit: { category: 'ยาเสพติด', subcategory: formData.drugType || '' } })
+      });
+      const exhibitData = await safeJson(exhibitRes);
+      if (!exhibitRes.ok || !exhibitData?.id) {
+        const err = new Error('ไม่สามารถสร้างรายการยาเสพติดได้');
+        err.response = { status: exhibitRes.status, data: exhibitData };
+        throw err;
+      }
+      const exhibitId = exhibitData.id;
+
+      // create narcotic
+      const narcoticPayload = {
+        exhibit_id: exhibitId,
+        form_id: parseInt(formData.formId) || '',
+        characteristics: isPillForm(evidenceType) ? (pillData.characteristics || formData.characteristics || '') : (formData.characteristics || ''),
+        drug_type: formData.drugType || '',
+        drug_category: formData.drugCategory || '',
+        consumption_method: formData.consumptionMethod || '',
+        effect: formData.effect || '',
+        weight_grams: formData.weightGrams ? parseFloat(formData.weightGrams) : null
+      };
+
+      const narcoticRes = await fetch(`${BASE_URL}/narcotic`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(narcoticPayload)
+      });
+      const narcoticData = await safeJson(narcoticRes);
+      if (!narcoticRes.ok || !narcoticData?.id) {
+        const err = new Error('ไม่สามารถบันทึกข้อมูลยาเสพติดได้');
+        err.response = { status: narcoticRes.status, data: narcoticData };
+        throw err;
+      }
+      const narcoticId = narcoticData.id;
+
+      // pill details if needed
+      if (isPillForm(evidenceType)) {
+        const pillBody = {
+          narcotic_id: narcoticId,
+          color: pillData.color || '',
+          diameter_mm: pillData.diameter_mm ? parseFloat(pillData.diameter_mm) : null,
+          thickness_mm: pillData.thickness_mm ? parseFloat(pillData.thickness_mm) : null,
+          edge_shape: pillData.edge_shape || '',
+          characteristics: pillData.characteristics || '',
+          edge_width_mm: pillData.edge_width_mm ? parseFloat(pillData.edge_width_mm) : null,
+          weight_mg: pillData.weight_mg ? parseFloat(pillData.weight_mg) : null
+        };
+        const pillRes = await fetch(`${BASE_URL}/narcotics/pill`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pillBody)
+        });
+        const pillDataRes = await safeJson(pillRes);
+        if (!pillRes.ok) {
+          const err = new Error('ไม่สามารถบันทึกข้อมูลยาเม็ดได้');
+          err.response = { status: pillRes.status, data: pillDataRes };
+          throw err;
+        }
+      }
+
+      // upload images (multipart/form-data) and vector
+      for (let i = 0; i < actualImages.length; i++) {
+        try {
+          const imageFormData = new FormData();
+          imageFormData.append('file', actualImages[i]);
+          imageFormData.append('description', `รูปภาพ ${formData.drugType || 'ยาเสพติด'} #${i + 1}`);
+          imageFormData.append('priority', String(i));
+          imageFormData.append('image_type', 'example');
+
+          const imageRes = await fetch(`${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`, {
+            method: 'POST',
+            credentials: 'include',
+            body: imageFormData
+          });
+          const imageData = await safeJson(imageRes);
+          if (imageRes.ok && imageData?.id) {
+            const vectorFormData = new FormData();
+            vectorFormData.append('file', actualImages[i]);
+            vectorFormData.append('narcotic_id', narcoticId);
+            vectorFormData.append('image_id', imageData.id);
+            await fetch(`${BASE_URL}/narcotics/images/vector`, {
+              method: 'POST',
+              credentials: 'include',
+              body: vectorFormData
+            });
+          } else {
+            console.warn('Image upload failed for index', i, imageRes.status, imageData);
+          }
+        } catch (imgErr) {
+          console.error('Image upload error', imgErr);
+        }
+      }
+
+      setSubmitSuccess(true);
+      setTimeout(() => navigate('/selectCatalogType/drugs-catalog'), 1500);
+    } catch (error) {
+      console.error('Error creating narcotic:', error);
+      if (error?.response) {
+        const status = error.response.status;
+        if (status === 401) setSubmitError('กรุณาเข้าสู่ระบบใหม่');
+        else if (status === 422) {
+          const errorMsg = error.response.data?.errors ? Object.values(error.response.data.errors).flat().join(', ') : 'ข้อมูลไม่ถูกต้อง';
+          setSubmitError(`ข้อมูลไม่ถูกต้อง: ${errorMsg}`);
+        } else {
+          setSubmitError(`เกิดข้อผิดพลาด (${status}): ${error.response.data?.message || 'โปรดลองอีกครั้ง'}`);
+        }
+      } else if (error instanceof TypeError) {
+        setSubmitError('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่อของคุณ');
+      } else {
+        setSubmitError(`เกิดข้อผิดพลาด: ${error?.message || 'ไม่ทราบสาเหตุ'}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, pillData, evidenceType, actualImages, navigate]);
+
+  return { handleSubmit, isSubmitting, submitSuccess, submitError, setSubmitError };
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -60,167 +277,18 @@ function CreateNarcoticCatalog() {
         packageColor: ""
     });
 
-    const [images, setImages] = useState([]);
-    const [actualImages, setActualImages] = useState([]);
-    const [selectedThumb, setSelectedThumb] = useState(0);
+    const { drugForms, isLoadingDrugForms } = useDrugForms();
+    const {
+      images, setImages,
+      actualImages, setActualImages,
+      selectedThumb, setSelectedThumb,
+      handleImageUpload, handleRemoveImage, handleDragEnd
+    } = useImageHandlers();
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitSuccess, setSubmitSuccess] = useState(false);
-    const [submitError, setSubmitError] = useState(null);
-
-    const [drugForms, setDrugForms] = useState([]);
-    const [isLoadingDrugForms, setIsLoadingDrugForms] = useState(false);
-
-    useEffect(() => {
-        let mounted = true;
-        const fetchDrugForms = async () => {
-            setIsLoadingDrugForms(true);
-            try {
-                const data = await getDrugForms();
-                if (mounted) setDrugForms(data || []);
-            } catch (err) {
-                console.error('Error fetching drug forms:', err);
-                setSubmitError('ไม่สามารถโหลดข้อมูลรูปแบบยาเสพติดได้');
-            } finally {
-                if (mounted) setIsLoadingDrugForms(false);
-            }
-        };
-        fetchDrugForms();
-        return () => { mounted = false; };
-    }, []);
+    const { handleSubmit, isSubmitting, submitSuccess, submitError, setSubmitError } =
+      useNarcoticSubmit({ formData, pillData, evidenceType, actualImages, navigate });
 
     const sensors = useSensors(useSensor(PointerSensor));
-
-    const handleImageUpload = useCallback((e) => {
-        const files = Array.from(e.target.files || []);
-        if (!files.length) return;
-        const imageUrls = files.map(file => URL.createObjectURL(file));
-        setImages(prev => [...prev, ...imageUrls]);
-        setActualImages(prev => [...prev, ...files]);
-        setSelectedThumb(prev => Math.max(0, prev));
-    }, []);
-
-    const handleRemoveImage = useCallback((index) => {
-        setImages(prev => {
-            const updated = [...prev];
-            updated.splice(index, 1);
-            return updated;
-        });
-        setActualImages(prev => {
-            const updated = [...prev];
-            updated.splice(index, 1);
-            return updated;
-        });
-        setSelectedThumb(prev => {
-            const newLen = images.length - 1;
-            return Math.max(0, Math.min(prev, newLen - 1));
-        });
-    }, [images.length]);
-
-    const handleDragEnd = useCallback((event) => {
-        const { active, over } = event;
-        if (!active || !over) return;
-        if (active.id !== over.id) {
-            const oldIndex = images.findIndex(img => img === active.id);
-            const newIndex = images.findIndex(img => img === over.id);
-            if (oldIndex === -1 || newIndex === -1) return;
-            setImages(prev => arrayMove(prev, oldIndex, newIndex));
-            setActualImages(prev => arrayMove(prev, oldIndex, newIndex));
-            setSelectedThumb(newIndex);
-        }
-    }, [images]);
-
-    const handleSubmit = useCallback(async (e) => {
-        e?.preventDefault();
-        setSubmitError(null);
-        setIsSubmitting(true);
-        try {
-            const exhibitResponse = await api.post(`${BASE_URL}/exhibits`, {
-                exhibit: {
-                    category: 'ยาเสพติด',
-                    subcategory: formData.drugType || ''
-                }
-            });
-
-            if (!exhibitResponse?.data?.id) throw new Error('ไม่สามารถสร้างรายการยาเสพติดได้');
-            const exhibitId = exhibitResponse.data.id;
-
-            const narcoticPayload = {
-                exhibit_id: exhibitId,
-                form_id: parseInt(formData.formId) || '',
-                characteristics: isPillForm(evidenceType) ? (pillData.characteristics || formData.characteristics || '') : (formData.characteristics || ''),
-                drug_type: formData.drugType || '',
-                drug_category: formData.drugCategory || '',
-                consumption_method: formData.consumptionMethod || '',
-                effect: formData.effect || '',
-                weight_grams: formData.weightGrams ? parseFloat(formData.weightGrams) : null
-            };
-
-            const narcoticResponse = await api.post(`${BASE_URL}/narcotic`, narcoticPayload);
-            if (!narcoticResponse?.data?.id) throw new Error('ไม่สามารถบันทึกข้อมูลยาเสพติดได้');
-            const narcoticId = narcoticResponse.data.id;
-
-            if (isPillForm(evidenceType)) {
-                await api.post(`${BASE_URL}/narcotics/pill`, {
-                    narcotic_id: narcoticId,
-                    color: pillData.color || '',
-                    diameter_mm: pillData.diameter_mm ? parseFloat(pillData.diameter_mm) : null,
-                    thickness_mm: pillData.thickness_mm ? parseFloat(pillData.thickness_mm) : null,
-                    edge_shape: pillData.edge_shape || '',
-                    characteristics: pillData.characteristics || '',
-                    edge_width_mm: pillData.edge_width_mm ? parseFloat(pillData.edge_width_mm) : null,
-                    weight_mg: pillData.weight_mg ? parseFloat(pillData.weight_mg) : null
-                });
-            }
-
-            for (let i = 0; i < actualImages.length; i++) {
-                try {
-                    const imageFormData = new FormData();
-                    imageFormData.append('file', actualImages[i]);
-                    imageFormData.append('description', `รูปภาพ ${formData.drugType || 'ยาเสพติด'} #${i + 1}`);
-                    imageFormData.append('priority', String(i));
-                    imageFormData.append('image_type', 'example');
-
-                    const imageResponse = await api.post(
-                        `${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`,
-                        imageFormData,
-                        { headers: { 'Content-Type': 'multipart/form-data' } }
-                    );
-
-                    if (imageResponse?.data?.id) {
-                        const vectorFormData = new FormData();
-                        vectorFormData.append('file', actualImages[i]);
-                        vectorFormData.append('narcotic_id', narcoticId);
-                        vectorFormData.append('image_id', imageResponse.data.id);
-                        await api.post(`${BASE_URL}/narcotics/images/vector`, vectorFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
-                    }
-                } catch (imgErr) {
-                    console.error('Image upload error', imgErr);
-                }
-            }
-
-            setSubmitSuccess(true);
-            setTimeout(() => navigate('/selectCatalogType/drugs-catalog'), 1500);
-        } catch (error) {
-            console.error('Error creating narcotic:', error);
-            if (error?.response) {
-                const status = error.response.status;
-                if (status === 401) setSubmitError('กรุณาเข้าสู่ระบบใหม่');
-                else if (status === 422) {
-                    const errorMsg = error.response.data?.errors ? Object.values(error.response.data.errors).flat().join(', ') : 'ข้อมูลไม่ถูกต้อง';
-                    setSubmitError(`ข้อมูลไม่ถูกต้อง: ${errorMsg}`);
-                } else {
-                    setSubmitError(`เกิดข้อผิดพลาด (${status}): ${error.response.data?.message || 'โปรดลองอีกครั้ง'}`);
-                }
-            } else if (error?.request) {
-                setSubmitError('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่อของคุณ');
-            } else {
-                setSubmitError(`เกิดข้อผิดพลาด: ${error?.message || 'ไม่ทราบสาเหตุ'}`);
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    }, [formData, pillData, evidenceType, actualImages, navigate]);
 
     const handleGoBack = useCallback(() => navigate(-1), [navigate]);
 
