@@ -12,6 +12,7 @@ const CreateUser = lazy(() => import('./pages/Admin/SuperAdmin/CreateUser'))
 const UserManagement = lazy(() => import('./pages/Admin/SuperAdmin/UserManagement'))
 const UserProfile = lazy(() => import('./pages/Admin/SuperAdmin/UserProfile'))
 const AdminNarcoticCatalog = lazy(() => import('./pages/Admin/NarcoticAdmin/AdminNarcoticCatalog'))
+const CreateNarcotic = lazy(() => import('./pages/Admin/NarcoticAdmin/CreateNarcotic'))
 const Map = lazy(() => import('./pages/Map'))
 const Camera = lazy(() => import('./pages/Camera'))
 
@@ -50,6 +51,7 @@ const App = memo(function App() {
         >
           {/* Narcotics Admin */}
           <Route path='/admin/narcotics/catalog-management' element={<AdminNarcoticCatalog />} />
+          <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
         </Route>
 
         {/* Fallback route for unmatched paths */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Edit3, Trash2, ChevronLeft, X, AlertTriangle, CheckCircle, ArrowLeft, MoreVertical } from 'lucide-react';
 import { PiImageBroken } from "react-icons/pi";
 import Pagination from '../../../components/common/Pagination';
+import Loading from '../../../components/common/Loading';
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -248,7 +249,7 @@ const NotificationModal = ({ isOpen, onClose, title, message, type = 'success' }
     );
 };
 
-// ==================== MAIN CONTAINER COMPONENT ====================
+// ==================== MAIN COMPONENT ====================
 const initialModalState = {
     confirm: { isOpen: false, id: null, loading: false },
     notification: { isOpen: false, type: 'success', title: '', message: '' }
@@ -335,8 +336,7 @@ const AdminNarcoticCatalog = () => {
     if (loading && narcotics.length === 0) {
         return (
             <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-t-2 border-[#990000]"></div>
-                <p className="ml-3 text-gray-600">Loading narcotic catalog...</p>
+                <Loading />
             </div>
         );
     }
@@ -372,7 +372,7 @@ const AdminNarcoticCatalog = () => {
                 {/* Mobile Cards */}
                 {loading && narcotics.length > 0 && (
                     <div className="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-30 flex justify-center items-center z-50">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-white"></div>
+                        <Loading />
                     </div>
                 )}
 
@@ -444,7 +444,7 @@ const AdminNarcoticCatalog = () => {
 
                 {loading && narcotics.length > 0 && (
                     <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-20 flex justify-center items-center z-50">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-white"></div>
+                        <Loading />
                     </div>
                 )}
                 
