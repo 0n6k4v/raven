@@ -80,10 +80,14 @@ const NumberField = memo(({ id, label, value, placeholder, onChange, step = NUMB
                 min={min}
                 value={value ?? ''}
                 onChange={onChange}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-[#990000] transition-all duration-200"
+                className="w-full px-4 py-3 pr-12 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-[#990000] transition-all duration-200"
                 placeholder={placeholder}
             />
-            {unit && <span className="absolute right-3 top-3 text-gray-500 pointer-events-none">{unit}</span>}
+            {unit && (
+              <span className="absolute inset-y-0 right-3 flex items-center text-gray-500 pointer-events-none">
+                {unit}
+              </span>
+            )}
         </div>
     </div>
 ));

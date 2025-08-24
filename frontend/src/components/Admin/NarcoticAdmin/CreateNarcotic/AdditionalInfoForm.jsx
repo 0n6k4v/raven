@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
+import Dropdown from '../../../common/Dropdown';
 
 // ==================== CONSTANTS ====================
 const DRUG_TYPES = [
@@ -80,19 +81,13 @@ const SelectField = React.memo(function SelectField({ id, label, value, options,
       <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={id}>
         {label}
       </label>
-      <select
+      <Dropdown
         id={id}
         value={value}
-        onChange={onChange}
-        className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-[#990000] transition-all duration-200"
-        aria-label={label}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        options={options}
+        onChange={(val) => onChange({ target: { value: val } })}
+        className="w-full"
+      />
     </div>
   );
 });
