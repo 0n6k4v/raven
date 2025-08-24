@@ -19,6 +19,9 @@ class Narcotic(NarcoticBase):
     class Config:
         from_attributes = True
 
+class NarcoticCreate(NarcoticBase):
+    pass
+
 class NarcoticWithRelations(Narcotic):
     exhibit: Optional["Exhibit"] = None
     drug_form: Optional["DrugForm"] = None
@@ -29,6 +32,11 @@ class NarcoticWithRelations(Narcotic):
         from_attributes = True
 
 try:
+    from app.schemas.exhibit_schema import Exhibit
+    from app.schemas.drug_form_schema import DrugForm
+    from app.schemas.narcotic_example_image_schema import NarcoticExampleImage
+    from app.schemas.narcotic_pill_schema import NarcoticPill
+
     Narcotic.model_rebuild()
     NarcoticWithRelations.model_rebuild()
 except Exception:

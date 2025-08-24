@@ -54,6 +54,17 @@ async def get_narcotic(db: AsyncSession, narcotic_id: int) -> Optional[Narcotic]
     result = await db.execute(select(Narcotic).filter(Narcotic.id == narcotic_id))
     return result.scalars().first()
 
+async def get_narcotic_with_relations(db: AsyncSession, narcotic_id: int) -> Optional[Narcotic]:
+    result = await db.execute(
+        select(Narcotic).options(
+            joinedload(Narcotic.exhibit),
+            joinedload(Narcotic.drug_form),
+            joinedload(Narcotic.example_images).joinedload(NarcoticExampleImage.image_vectors),
+            joinedload(Narcotic.pill_info)
+        ).filter(Narcotic.id == narcotic_id)
+    )
+    return result.scalars().first()
+
 async def delete_narcotic(db: AsyncSession, narcotic_id: int) -> bool:
     db_narcotic = await get_narcotic(db, narcotic_id)
     if db_narcotic:
