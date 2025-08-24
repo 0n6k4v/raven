@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth_router, user_router, role_router, province_router, district_router, subdistrict_router
+from app.routes import auth_router, user_router, role_router, province_router, district_router, subdistrict_router, narcotic_router
 
 def create_app() -> FastAPI:
     app = FastAPI()
@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(province_router, prefix="/api")
     app.include_router(district_router, prefix="/api")
     app.include_router(subdistrict_router, prefix="/api")
+    app.include_router(narcotic_router, prefix="/api")
 
     @app.get("/", tags=["Health"])
     async def main():

@@ -21,11 +21,6 @@ function getHomeComponentType(roleId) {
   return 'forbidden';
 }
 
-/* CUSTOM HOOKS */
-function useHomeComponentType(user) {
-  return useMemo(() => getHomeComponentType(user?.role?.id), [user?.role?.id]);
-}
-
 /* PRESENTATIONAL COMPONENTS */
 const ForbiddenAccess = memo(function ForbiddenAccess() {
   return (
@@ -37,20 +32,26 @@ const ForbiddenAccess = memo(function ForbiddenAccess() {
 
 /* MAIN COMPONENT */
 const Home = memo(function Home() {
-  const [user] = useUser();
-  const homeType = useHomeComponentType(user);
-
-  if (homeType === 'superadmin') return <SuperAdminHome />;
-
-  if (homeType === 'admin') {
-    const dept = (user?.department || '').trim();
-    if (dept === NARCOTICS_DEPARTMENT) return <NarcoticsAdminHome />;
-    return <ForbiddenAccess />;
-  }
-
-  if (homeType === 'user') return <UserHome />;
-
-  return <ForbiddenAccess />;
+  const { user, isLoading } = useUser();
+ 
+   const homeType = useMemo(() => getHomeComponentType(user?.role?.id), [user?.role?.id]);
+ 
+   if (isLoading) {
+     return <div className="text-center mt-10">กำลังโหลด...</div>;
+   }
+ 
+   if (!user) return <ForbiddenAccess />;
+ 
+   if (homeType === 'superadmin') return <SuperAdminHome />;
+ 
+   if (homeType === 'admin') {
+     const dept = (user?.department || '').trim();
+     if (dept === NARCOTICS_DEPARTMENT) return <NarcoticsAdminHome />;
+   }
+ 
+   if (homeType === 'user') return <UserHome />;
+ 
+   return <ForbiddenAccess />;
 });
 
 export default Home;

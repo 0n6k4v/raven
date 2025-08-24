@@ -4,8 +4,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
+from app.models.exhibit_model import Exhibit
 
-# Use SQLAlchemy 2.0 style declarative base
 class ChemicalCompound(Base):
     __tablename__ = "chemical_compounds"
 
@@ -40,7 +40,7 @@ class Narcotic(Base):
     effect: Mapped[str | None] = mapped_column(Text)
     weight_grams: Mapped[float | None] = mapped_column(Numeric(10, 2))
 
-    exhibit = relationship("Exhibit", back_populates="narcotic")
+    exhibit = relationship("Exhibit", back_populates="narcotics")
     drug_form = relationship("DrugForm", back_populates="narcotics")
     example_images = relationship(
         "NarcoticExampleImage", back_populates="narcotic", cascade="all, delete-orphan"

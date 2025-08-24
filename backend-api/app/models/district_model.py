@@ -1,7 +1,7 @@
-from sqlalchemy import String, Float, ForeignKey
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from geoalchemy2 import Geometry
 from app.models.base import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Float, ForeignKey
+from geoalchemy2 import Geometry
 from typing import Any
 
 class District(Base):
