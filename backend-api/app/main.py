@@ -4,7 +4,7 @@ import app.models
 from app.routes import ( 
     auth_router, user_router, role_router, 
     province_router, district_router, subdistrict_router, 
-    narcotic_router, drug_form_router 
+    exhibit_router, narcotic_router, drug_form_router,
 )
 
 def create_app() -> FastAPI:
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(province_router, prefix="/api")
     app.include_router(district_router, prefix="/api")
     app.include_router(subdistrict_router, prefix="/api")
+    app.include_router(exhibit_router, prefix="/api")
     app.include_router(narcotic_router, prefix="/api")
     app.include_router(drug_form_router, prefix="/api")
 

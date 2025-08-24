@@ -6,3 +6,4 @@ from .district import router as district_router
 from .subdistrict import router as subdistrict_router
 from .narcotic import router as narcotic_router
 from .drug_form import router as drug_form_router
+from .exhibit import router as exhibit_router

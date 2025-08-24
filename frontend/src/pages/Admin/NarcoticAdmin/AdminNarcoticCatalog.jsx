@@ -348,7 +348,7 @@ const AdminNarcoticCatalog = () => {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-full p-4">
+            <div className="flex flex-col items-center justify-center min-h-screen p-4 w-full">
                 <p className="text-red-600 text-xl mb-4">Error loading narcotic catalog: {error}</p>
                 <button onClick={() => refetch()} className="px-4 py-2 bg-[#990000] text-white rounded hover:bg-[#7a0000]">Retry</button>
             </div>
