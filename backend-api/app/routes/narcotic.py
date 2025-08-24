@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status, HTTPException
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.db_config import get_async_db
 from app.schemas.narcotic_schema import NarcoticWithRelations
-from app.controllers.narcotic_controller import get_narcotics
+from app.controllers.narcotic_controller import get_narcotics, delete_narcotic
 
 router = APIRouter(tags=["narcotics"])
 
@@ -30,3 +30,13 @@ async def read_narcotics(
     )
     
     return narcotics
+
+@router.delete("/narcotics/{narcotic_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_narcotic_by_id(
+    narcotic_id: int,
+    db: AsyncSession = Depends(get_async_db)
+):
+    success = await delete_narcotic(db, narcotic_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Narcotic not found")
+    return None

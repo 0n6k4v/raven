@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from app.models.narcotic_model import Narcotic, NarcoticExampleImage
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, delete
 
 async def get_narcotics(
     db: AsyncSession, 
@@ -49,3 +49,15 @@ async def get_narcotics(
         
     result = await db.execute(query)
     return result.scalars().unique().all()
+
+async def get_narcotic(db: AsyncSession, narcotic_id: int) -> Optional[Narcotic]:
+    result = await db.execute(select(Narcotic).filter(Narcotic.id == narcotic_id))
+    return result.scalars().first()
+
+async def delete_narcotic(db: AsyncSession, narcotic_id: int) -> bool:
+    db_narcotic = await get_narcotic(db, narcotic_id)
+    if db_narcotic:
+        await db.execute(delete(Narcotic).where(Narcotic.id == narcotic_id))
+        await db.commit()
+        return True
+    return False
