@@ -190,7 +190,6 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
         }
       }
 
-      // upload images (multipart/form-data) and vector
       for (let i = 0; i < actualImages.length; i++) {
         try {
           const imageFormData = new FormData();

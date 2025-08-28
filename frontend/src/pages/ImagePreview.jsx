@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { X, RotateCcw, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDevice } from '../../context/DeviceContext';
-import { api } from '../../config/api';
-import { findSimilarNarcoticsWithBase64 } from '../../services/narcoticReferenceService';
-import { Tutorial } from '../../data/tutorialData';
+import { Tutorial } from '../constants/tutorialData';
 
 // ==================== CONSTANTS ====================
-const API_PATH = '/api';
+const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 const DEFAULT_MAX_SIZE = 1600;
 const SUBMIT_TIMEOUT_MS = 20000;
 
@@ -60,7 +57,17 @@ const dataUrlToBlob = async (dataUrl) => {
 const useImagePreviewLogic = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDesktop } = useDevice();
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth >= 1024;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const [imageData, setImageData] = useState(null);
   const [mode, setMode] = useState(null);
@@ -89,11 +96,9 @@ const useImagePreviewLogic = () => {
   }, [location.state, navigate]);
 
   const navigateToCandidateShow = useCallback((result, localImage) => {
-    localStorage.setItem('analysisResult', JSON.stringify(result));
     navigate('/candidateShow', {
       state: {
         result,
-        analysisResult: result,
         image: localImage,
         fromCamera,
         uploadFromCameraPage: location.state?.uploadFromCameraPage || false,
@@ -126,9 +131,6 @@ const useImagePreviewLogic = () => {
     setError(null);
 
     try {
-      localStorage.removeItem('analysisResult');
-      localStorage.removeItem('evidenceData');
-      localStorage.removeItem('currentEvidenceData');
       try {
         localStorage.setItem('analysisImage', imageData);
       } catch (err) {
@@ -172,14 +174,22 @@ const useImagePreviewLogic = () => {
     const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), SUBMIT_TIMEOUT_MS);
 
     try {
-      const response = await api.post(`${API_PATH}/analyze`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        signal: abortControllerRef.current.signal,
-        timeout: 120000
+      const response = await fetch(`${BASE_URL}/object-classify`, {
+        method: 'POST',
+        body: formData,
+        signal: abortControllerRef.current.signal
       });
 
       clearTimeout(timeoutId);
-      const result = response?.data;
+
+      if (!response.ok) {
+        console.error('Analysis request failed', response.status, response.statusText);
+        navigateToUnknownObject();
+        setIsProcessing(false);
+        return;
+      }
+
+      const result = await response.json();
       if (!result) {
         console.error('Empty analysis result');
         navigateToUnknownObject();
@@ -265,47 +275,16 @@ const useImagePreviewLogic = () => {
               });
             });
           } else if (detection.vector_base64) {
-            try {
-              const similarResults = await findSimilarNarcoticsWithBase64(detection.vector_base64, 3);
-              if (Array.isArray(similarResults) && similarResults.length > 0) {
-                similarResults.forEach(n => {
-                  drugCandidates.push({
-                    label: n.characteristics || n.name || 'ยาเสพติดไม่ทราบลักษณะ',
-                    displayName: n.characteristics || n.name || 'ยาเสพติดไม่ทราบลักษณะ',
-                    confidence: n.similarity || detection.confidence || 0,
-                    narcotic_id: n.narcotic_id,
-                    drug_type: n.drug_type || 'ไม่ทราบชนิด',
-                    drug_category: n.drug_category || 'ไม่ทราบประเภท',
-                    characteristics: n.characteristics || 'ไม่ทราบอัตลักษณ์',
-                    similarity: n.similarity || 0,
-                    source: 'frontend_search'
-                  });
-                });
-              } else {
-                drugCandidates.push({
-                  label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-                  displayName: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-                  confidence: detection.confidence || 0,
-                  drug_type: detection.drug_type || 'ไม่ทราบชนิด',
-                  drug_category: 'ยาเสพติดไม่ทราบประเภท',
-                  characteristics: detection.drug_type || 'ไม่ทราบอัตลักษณ์',
-                  vector_base64: detection.vector_base64,
-                  source: 'ai_detection'
-                });
-              }
-            } catch (searchErr) {
-              console.error('Frontend narcotic search failed', searchErr);
-              drugCandidates.push({
-                label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-                displayName: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-                confidence: detection.confidence || 0,
-                drug_type: detection.drug_type || 'ไม่ทราบชนิด',
-                drug_category: 'ยาเสพติดไม่ทราบประเภท',
-                characteristics: detection.drug_type || 'ไม่ทราบอัตลักษณ์',
-                vector_base64: detection.vector_base64,
-                source: 'ai_detection_fallback'
-              });
-            }
+            drugCandidates.push({
+              label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
+              displayName: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
+              confidence: detection.confidence || 0,
+              drug_type: detection.drug_type || 'ไม่ทราบชนิด',
+              drug_category: 'ยาเสพติดไม่ทราบประเภท',
+              characteristics: detection.drug_type || 'ไม่ทราบอัตลักษณ์',
+              vector_base64: detection.vector_base64,
+              source: 'ai_detection'
+            });
           } else {
             drugCandidates.push({
               label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
@@ -334,7 +313,6 @@ const useImagePreviewLogic = () => {
         result.drugCandidates = drugCandidates;
       }
 
-      localStorage.setItem('analysisResult', JSON.stringify(result));
       navigateToCandidateShow(result, imageData);
     } catch (err) {
       console.error('Submit failed', err);
@@ -531,8 +509,6 @@ const ImagePreview = () => {
     else handleGoBack();
   }, [fromCamera, handleRetake, handleGoBack]);
 
-  if (!imageData) return null;
-
   const commonProps = useMemo(() => ({
     imageData,
     resolution,
@@ -545,11 +521,12 @@ const ImagePreview = () => {
     viewMode
   }), [imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, submitAnalysis, mode, viewMode]);
 
+  if (!imageData) return null;
+
   return isDesktop ? (
     <DesktopPreview {...commonProps} />
   ) : (
     <MobilePreview {...commonProps} Tutorial={Tutorial} />
   );
 };
-
 export default ImagePreview;

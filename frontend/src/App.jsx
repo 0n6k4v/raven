@@ -15,6 +15,7 @@ const AdminNarcoticCatalog = lazy(() => import('./pages/Admin/NarcoticAdmin/Admi
 const CreateNarcotic = lazy(() => import('./pages/Admin/NarcoticAdmin/CreateNarcotic'))
 const Map = lazy(() => import('./pages/Map'))
 const Camera = lazy(() => import('./pages/Camera'))
+const ImagePreview = lazy(() => import('./pages/ImagePreview'))
 
 const App = memo(function App() {
   return (
@@ -23,6 +24,7 @@ const App = memo(function App() {
         {/* Public routes */}
         <Route path='/login' element={<Login />} />
         <Route path='/camera' element={<Camera />} />
+        <Route path='/imagePreview' element={<ImagePreview />} />
 
         {/* Protected routes */}
         <Route

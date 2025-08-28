@@ -5,6 +5,7 @@ from app.routes import (
     auth_router, user_router, role_router, 
     province_router, district_router, subdistrict_router, 
     exhibit_router, narcotic_router, drug_form_router,
+    inference_router
 )
 
 def create_app() -> FastAPI:
@@ -14,7 +15,9 @@ def create_app() -> FastAPI:
         "http://localhost",
         "http://frontend",
         "http://localhost:80",
-        "http://frontend:80"
+        "http://frontend:80",
+        "http://localhost:8080",
+        "http://ai-service:8080"
     ]
 
     app.add_middleware(
@@ -34,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(exhibit_router, prefix="/api")
     app.include_router(narcotic_router, prefix="/api")
     app.include_router(drug_form_router, prefix="/api")
+    app.include_router(inference_router, prefix="/api")
 
     @app.get("/", tags=["Health"])
     async def main():

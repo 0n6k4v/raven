@@ -1,8 +1,20 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from app.models.narcotic_model import Narcotic, NarcoticExampleImage
+from app.schemas.narcotic_example_image_schema import NarcoticExampleImageBase
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select, or_, delete
+
+async def add_example_image(db: AsyncSession, image: NarcoticExampleImageBase) -> NarcoticExampleImage:
+    db_image = NarcoticExampleImage(**image.model_dump())
+    db.add(db_image)
+    await db.commit()
+    await db.refresh(db_image)
+    return db_image
+
+async def get_narcotic(db: AsyncSession, narcotic_id: int) -> Optional[Narcotic]:
+    result = await db.execute(select(Narcotic).filter(Narcotic.id == narcotic_id))
+    return result.scalars().first()
 
 async def get_narcotics(
     db: AsyncSession, 

@@ -1,11 +1,17 @@
-from fastapi import APIRouter, status, Depends, HTTPException
-from typing import List, Optional
+from fastapi import APIRouter, status, Depends, HTTPException, Body
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from app.schemas.narcotic_schema import NarcoticWithRelations, NarcoticCreate
 from app.schemas.narcotic_pill_schema import NarcoticPillBase
 from app.config.db_config import get_async_db
 from app.controllers.exhibit_controller import get_exhibit_by_id
-from app.controllers.narcotic_controller import get_narcotics, delete_narcotic, get_narcotic_with_relations
+from app.controllers.narcotic_controller import (
+    get_narcotics,
+    delete_narcotic,
+    get_narcotic_with_relations,
+)
+from app.controllers.narcotic_image_vector_controller import search_similar_narcotics_with_vector
 
 router = APIRouter(tags=["narcotics"])
 
@@ -96,6 +102,28 @@ async def read_narcotics(
     )
     
     return narcotics
+
+@router.post("/search-vector", response_model=Dict[str, List[Dict[str, Any]]])
+async def search_similar_narcotics(
+    vector: List[float] = Body(None),
+    vector_base64: str = Body(None),
+    top_k: int = Body(3),
+    similarity_threshold: float = Body(0.05),
+    db: AsyncSession = Depends(get_async_db)
+):
+    try:
+        results = await search_similar_narcotics_with_vector(
+            db=db,
+            vector=vector,
+            vector_base64=vector_base64,
+            top_k=top_k,
+            similarity_threshold=similarity_threshold
+        )
+        return {"results": results}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/narcotics/{narcotic_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_narcotic_by_id(
