@@ -8,3 +8,4 @@ from .narcotic import router as narcotic_router
 from .drug_form import router as drug_form_router
 from .exhibit import router as exhibit_router
 from .inference import router as inference_router
+from .vector import router as vector_router

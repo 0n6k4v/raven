@@ -8,6 +8,7 @@ router = APIRouter(tags=["inference"])
 @router.post("/object-classify", response_model=Dict[str, Any])
 async def analyze_image(image: UploadFile = File(...)):
     ai_service_url = get_ai_service_url()
+    target_url = f"{ai_service_url}/api/object-classify"
     
     try:
         file_content = await image.read()
@@ -15,7 +16,7 @@ async def analyze_image(image: UploadFile = File(...)):
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:
                 response = await client.post(
-                    f"{ai_service_url}/api/object-classify",
+                    target_url,
                     files={"image": (image.filename, file_content, image.content_type)},
                     headers={
                         "Accept": "application/json",

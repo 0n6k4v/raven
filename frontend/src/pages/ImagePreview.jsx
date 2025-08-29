@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, RotateCcw, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tutorial } from '../constants/tutorialData';
+import { setCookie } from '../utils/cookies';
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -132,13 +133,13 @@ const useImagePreviewLogic = () => {
 
     try {
       try {
-        localStorage.setItem('analysisImage', imageData);
+        setCookie('img_ref', imageData, { maxAge: 60 * 60 });
       } catch (err) {
-        console.warn('Failed to persist image to localStorage', err);
-        localStorage.setItem('noAnalysisImage', 'true');
+        console.warn('Failed to persist image to cookie', err);
+        try { setCookie('noImgRef', 'true', { maxAge: 60 * 60 }); } catch (_) {}
       }
     } catch (e) {
-      console.warn('LocalStorage cleanup failed', e);
+      console.warn('Cookies cleanup failed', e);
     }
 
     let imageToSend = imageData;

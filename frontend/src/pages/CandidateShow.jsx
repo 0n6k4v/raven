@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react';
 import { PiImageBroken } from 'react-icons/pi';
 import { IoClose } from 'react-icons/io5';
+import { readCookie } from '../utils/cookies';
 // import { fetchGunReferenceImages, getGunReferenceImage } from '../../services/gunReferenceService';
 // import { fetchNarcoticById } from '../../services/narcoticReferenceService';
 
@@ -15,11 +16,22 @@ const UNKNOWN_EXHIBIT_IDS = {
 };
 
 // ==================== UTILS ====================
-const readCookie = (name) => {
-  if (typeof document === 'undefined') return null;
-  const m = document.cookie.split('; ').find(c => c.trim().startsWith(`${name}=`));
-  return m ? decodeURIComponent(m.split('=')[1]) : null;
-};
+async function convertImgRefToVector(opts = { timeoutMs: 120000 }) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), opts.timeoutMs);
+  try {
+    const res = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, { method: 'POST', signal: controller.signal });
+    clearTimeout(id);
+    let payload;
+    try { payload = await res.json(); } catch { payload = await res.text(); }
+    console.log('convert_image_ref_to_vector response:', payload);
+    return payload;
+  } catch (err) {
+    clearTimeout(id);
+    console.error('convert_image_ref_to_vector request failed:', err);
+    throw err;
+  }
+}
 
 const formatConfidence = (confidence, isUnknown) => {
   if (isUnknown === true || confidence === undefined || confidence === null) return '0%';
@@ -241,7 +253,6 @@ const GunBrandPanel = React.memo(({
 const CandidateShow = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // removed useDevice
   // const { isMobile, isDesktop, isTablet } = useDevice();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -257,8 +268,20 @@ const CandidateShow = () => {
   const [detectionType, setDetectionType] = useState('');
 
   const dt_cook = readCookie('detectionType');
+  const cookieImage = readCookie('img_ref') || '';
   console.log(dt_cook);
 
+  useEffect(() => {
+    if (!dt_cook) return;
+    try {
+      if (String(dt_cook).toLowerCase() === 'drug') {
+        convertImgRefToVector().catch(() => {});
+      }
+    } catch (e) {
+      console.error('Error checking dt_cook for convert trigger:', e);
+    }
+  }, [dt_cook]);
+  
   const { images: gunReferenceImages, loading: isLoadingImages, getModelImage } = useGunReferenceImages();
   const { detailsMap: narcoticsDetails, loading: isLoadingNarcotics, loadAll: loadAllNarcoticsDetails } = useNarcoticsDetails(candidates, detectionType);
 
@@ -273,7 +296,7 @@ const CandidateShow = () => {
     const { analysisResult, result, image, fromCamera: fc, sourcePath: sp } = location.state;
     console.log(result);
     const data = analysisResult || result || {};
-    setImageUrl(image || localStorage.getItem('analysisImage') || '');
+    setImageUrl(image || cookieImage || '');
     setFromCamera(!!fc);
     setSourcePath(sp || '');
     setIsUnknownObject(false);
