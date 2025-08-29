@@ -71,21 +71,22 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8080
-      - MODEL_PATH=/app/model
+      - MODEL_PATH=/app/ai_models
+      - YOLO_CONFIG_DIR=/tmp/Ultralytics
       - AI_MODE=segment_only
       - LOG_LEVEL=INFO
       - DEBUG=false
       - ENVIRONMENT=production
     volumes:
-      - ./ai-service-api/model:/app/model
+      - ./ai-service-api/app/ai_models:/app/ai_models
     networks:
       - app-network
     restart: always
     deploy:
       resources:
         limits:
-          cpus: '1.00'
-          memory: 2G
+          cpus: '2.00'
+          memory: 4G
 
   db-service:
     build:

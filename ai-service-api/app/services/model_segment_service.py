@@ -35,7 +35,7 @@ class ModelSegmentService:
 
                 obj = {
                     "class_id": cls_id,
-                    "class_name": class_name,
+                    "detection_type": class_name,
                     "confidence": round(conf_list[i], 4) if i < len(conf_list) else None
                 }
                 out["objects"].append(obj)

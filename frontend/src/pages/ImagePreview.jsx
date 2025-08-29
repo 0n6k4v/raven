@@ -6,7 +6,7 @@ import { Tutorial } from '../constants/tutorialData';
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 const DEFAULT_MAX_SIZE = 1600;
-const SUBMIT_TIMEOUT_MS = 20000;
+const SUBMIT_TIMEOUT_MS = 180000;
 
 // ==================== UTILS ====================
 const resizeImageDataUrl = (dataUrl, maxWidth = DEFAULT_MAX_SIZE, maxHeight = DEFAULT_MAX_SIZE, quality = 0.95) =>
@@ -190,6 +190,14 @@ const useImagePreviewLogic = () => {
       }
 
       const result = await response.json();
+
+      try {
+        const detectionType = result.objects[0]?.detection_type || '';
+        document.cookie = `detectionType=${encodeURIComponent(detectionType)}; path=/; max-age=${60 * 60}`;
+      } catch (cookieErr) {
+        console.warn('Failed to set detectionType cookie', cookieErr);
+      }
+
       if (!result) {
         console.error('Empty analysis result');
         navigateToUnknownObject();

@@ -34,7 +34,7 @@ def segment_image(image):
         segmented_objects.append({
             "index": i,
             "class_id": cls_id,
-            "class_name": cls_name,
+            "detection_type": cls_name,
             "confidence": round(confidence, 3),
             "mask": mask.cpu().numpy(),
             "cropped_image": cropped
@@ -58,7 +58,7 @@ def process_image(image_path):
         
         obj_data = {
             "object_index": obj["index"],
-            "class": obj["class_name"],
+            "detection_type": obj["class_name"],
             "confidence": obj["confidence"],
             "cropped_path": temp_path
         }
