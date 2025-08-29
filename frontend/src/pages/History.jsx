@@ -1,8 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { useUser } from '../hooks/useUser';
-import UserHome from '../components/Home/UserHome';
-import SuperAdminHome from '../components/Home/SuperAdminHome';
-import NarcoticsAdminHome from '../components/Home/NarcoticsAdminHome';
+import UserHistory from '../components/History/UserHistory';
 
 /* ========================= CONSTANTS ========================= */
 const ROLE_IDS = {
@@ -11,10 +9,8 @@ const ROLE_IDS = {
     USER: 3,
 };
 
-const NARCOTICS_DEPARTMENT = 'กลุ่มงานยาเสพติด';
-
 /* ========================= UTILS ========================= */
-function getHomeComponentType(roleId) {
+function getHistoryComponentType(roleId) {
   if (roleId === ROLE_IDS.SUPERADMIN) return 'superadmin';
   if (roleId === ROLE_IDS.ADMIN) return 'admin';
   if (roleId === ROLE_IDS.USER) return 'user';
@@ -31,27 +27,18 @@ const ForbiddenAccess = memo(function ForbiddenAccess() {
 });
 
 /* ========================= MAIN COMPONENT ========================= */
-const Home = memo(function Home() {
-  const { user, isLoading } = useUser();
- 
-   const homeType = useMemo(() => getHomeComponentType(user?.role?.id), [user?.role?.id]);
- 
+const History = memo(function History() {
+    const { user, isLoading } = useUser();
+
+    const historyType = useMemo(() => getHistoryComponentType(user?.role?.id), [user?.role?.id]);
+
    if (isLoading) {
      return <div className="text-center mt-10">กำลังโหลด...</div>;
    }
- 
-   if (!user) return <ForbiddenAccess />;
- 
-   if (homeType === 'superadmin') return <SuperAdminHome />;
- 
-   if (homeType === 'admin') {
-     const dept = (user?.department || '').trim();
-     if (dept === NARCOTICS_DEPARTMENT) return <NarcoticsAdminHome />;
-   }
- 
-   if (homeType === 'user') return <UserHome />;
- 
+
+   if (historyType === 'user') return <UserHistory />;
+
    return <ForbiddenAccess />;
 });
 
-export default Home;
+export default History;

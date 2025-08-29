@@ -17,7 +17,7 @@ async def convert_image_to_vector(image: UploadFile = File(...)):
 
     files = {'image': (image.filename or 'image.jpg', file_bytes, image.content_type or 'application/octet-stream')}
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=600.0) as client:
         try:
             resp = await client.post(target_url, files=files)
         except httpx.RequestError as exc:

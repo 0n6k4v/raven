@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router-dom'
 /* ========================= MAIN COMPONENT ========================= */
 const Layout = lazy(() => import('./components/layout/Layout'))
 const Layout2 = lazy(() => import('./components/layout/Layout2'))
+const Layout3 = lazy(() => import('./components/layout/Layout3'))
 const ProtectedRoute = lazy(() => import('./components/common/ProtectedRoute'))
 const Login = lazy(() => import('./pages/Login'))
 const Home = lazy(() => import('./pages/Home'))
@@ -16,6 +17,7 @@ const Map = lazy(() => import('./pages/Map'))
 const Camera = lazy(() => import('./pages/Camera'))
 const ImagePreview = lazy(() => import('./pages/ImagePreview'))
 const CandidateShow = lazy(() => import('./pages/CandidateShow'))
+const History = lazy(() => import('./pages/History'))
 
 const App = memo(function App() {
   return (
@@ -54,6 +56,20 @@ const App = memo(function App() {
           {/* Narcotics Admin */}
           <Route path='/admin/narcotics/catalog-management' element={<AdminNarcoticCatalog />} />
           <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
+
+          {/* History */}
+          <Route path='/history' element={<History />} />
+        </Route>
+
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout3 />
+            </ProtectedRoute>
+          }
+        >
+          {/* Evidence Profile */}
+          {/* <Route path='/evidenceProfile' element={<EvidenceProfile />} /> */}
         </Route>
 
         {/* Fallback route for unmatched paths */}
