@@ -107,25 +107,20 @@ class ModelManager:
         else:
             return {0: "gun", 1: "pistol", 2: "rifle", 3: "weapon"}
 
-    async def warmup_models(self, timeout_per_model: float = 120.0, retry_interval: float = 5.0):
-        """Warm up loaded models sequentially and keep retrying until critical warmups succeed.
-
-        This will loop until both 'segmentation' and 'narcotic' warmups return True.
-        Be careful: this can block startup indefinitely if warmup never succeeds.
-        """
+    async def warmup_models(self, timeout_per_model: float = 120.0, retry_interval: float = 5.0, max_retries: int = 5):
         import time
-        import asyncio
 
-        print("[ModelManager] Warmup: starting (will retry until successful)")
+        print("[ModelManager] Warmup: starting (will retry until successful or max_retries reached)")
         # smaller dummy to speed up warmup
         dummy = np.zeros((320, 320, 3), dtype=np.uint8)
 
         async def _call_model_async(m):
             return await asyncio.to_thread(m, dummy)
 
-        while True:
-            results = {"segmentation": False, "narcotic": False, "brand": False, "brand_specific": 0}
-            try:
+        attempt = 0
+        while attempt < max_retries:
+             results = {"segmentation": False, "narcotic": False, "brand": False, "brand_specific": 0}
+             try:
                 # segmentation
                 if self.model_segment is not None:
                     try:
@@ -171,15 +166,23 @@ class ModelManager:
                     print("[ModelManager] Warmup: critical models warmed successfully")
                     return results
 
-                # otherwise wait and retry
-                print(f"[ModelManager] Warmup: not all critical warmed, retrying in {retry_interval}s")
+                # otherwise wait and retry (increment attempt)
+                attempt += 1
+                print(f"[ModelManager] Warmup: attempt {attempt}/{max_retries} not all warmed, retrying in {retry_interval}s")
+                if attempt >= max_retries:
+                    print("[ModelManager] Warmup: reached max_retries, returning current status")
+                    return results
                 await asyncio.sleep(retry_interval)
 
-            except Exception as e:
-                print(f"[ModelManager] Warmup failed with unexpected error: {e}")
-                traceback.print_exc()
-                print(f"[ModelManager] Retrying in {retry_interval}s")
-                await asyncio.sleep(retry_interval)
+             except Exception as e:
+                 print(f"[ModelManager] Warmup failed with unexpected error: {e}")
+                 traceback.print_exc()
+                 attempt += 1
+                 if attempt >= max_retries:
+                    print("[ModelManager] Warmup: reached max_retries after exception, returning")
+                    return {"segmentation": False, "narcotic": False, "brand_specific": 0}
+                 print(f"[ModelManager] Retrying in {retry_interval}s (attempt {attempt}/{max_retries})")
+                 await asyncio.sleep(retry_interval)
 
     def get_warmup_status(self):
         return {

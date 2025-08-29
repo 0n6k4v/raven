@@ -131,17 +131,6 @@ const useImagePreviewLogic = () => {
     setIsProcessing(true);
     setError(null);
 
-    try {
-      try {
-        setCookie('img_ref', imageData, { maxAge: 60 * 60 });
-      } catch (err) {
-        console.warn('Failed to persist image to cookie', err);
-        try { setCookie('noImgRef', 'true', { maxAge: 60 * 60 }); } catch (_) {}
-      }
-    } catch (e) {
-      console.warn('Cookies cleanup failed', e);
-    }
-
     let imageToSend = imageData;
     const isLargeImage = imageData.length > 1000000;
 

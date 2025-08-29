@@ -16,11 +16,31 @@ const UNKNOWN_EXHIBIT_IDS = {
 };
 
 // ==================== UTILS ====================
-async function convertImgRefToVector(opts = { timeoutMs: 120000 }) {
+async function convertImgRefToVector(dataUrl, opts = { timeoutMs: 120000 }) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), opts.timeoutMs);
   try {
-    const res = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, { method: 'POST', signal: controller.signal });
+    const imgDataUrl = dataUrl;
+    if (!imgDataUrl) {
+      clearTimeout(id);
+      console.warn('No image data provided; skipping convert_image_ref_to_vector');
+      return null;
+    }
+    async function dataUrlToBlob(dUrl) {
+      const res = await fetch(dUrl);
+      return await res.blob();
+    }
+
+    const blob = await dataUrlToBlob(imgDataUrl);
+    const formData = new FormData();
+    formData.append('image', blob, 'image.jpg');
+
+    const res = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+
     clearTimeout(id);
     let payload;
     try { payload = await res.json(); } catch { payload = await res.text(); }
@@ -84,67 +104,26 @@ const findExhibitByNarcoticId = async (narcoticId) => {
   return null;
 };
 
+// stubbed: fetchGunReferenceImages / getGunReferenceImage imports are commented out in this branch.
+// Provide a safe no-op implementation so UI won't crash when those services are unavailable.
 const useGunReferenceImages = () => {
-  const [images, setImages] = useState({ default: '' });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      try {
-        const map = await fetchGunReferenceImages();
-        if (mounted) setImages(map || { default: '' });
-      } catch (err) {
-        console.error('Failed to load gun reference images:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  const getModelImage = useCallback((brandName, modelName) => {
-    if (loading) return null;
-    return getGunReferenceImage(images, brandName, modelName);
-  }, [images, loading]);
-
+  const [images] = useState({ default: '' });
+  const [loading] = useState(false);
+  const getModelImage = useCallback(() => null, []);
   return { images, loading, getModelImage };
 };
 
+// stubbed: fetchNarcoticById import is commented out in this branch.
+// Return empty/no-op implementation to avoid runtime ReferenceError.
 const useNarcoticsDetails = (candidates, detectionType) => {
-  const [detailsMap, setDetailsMap] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  const loadAll = useCallback(async (inputCandidates) => {
-    if (!inputCandidates || inputCandidates.length === 0) return;
-    setLoading(true);
-    const resultMap = { ...detailsMap };
-    try {
-      const valid = inputCandidates.filter(c => c.narcotic_id && !c.isUnknownDrug);
-      const promises = valid.map(async (c) => {
-        if (!resultMap[c.narcotic_id]) {
-          const data = await fetchNarcoticById(c.narcotic_id);
-          if (data) resultMap[c.narcotic_id] = data;
-        }
-      });
-      await Promise.all(promises);
-      setDetailsMap(resultMap);
-    } catch (err) {
-      console.error('Error loading narcotics details:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [detailsMap]);
-
-  useEffect(() => {
-    if (detectionType === 'Drug' && candidates && candidates.length > 0) {
-      loadAll(candidates);
-    }
-  }, [candidates, detectionType, loadAll]);
-
+  const [detailsMap] = useState({});
+  const [loading] = useState(false);
+  const loadAll = useCallback(async () => { /* no-op */ }, []);
   return { detailsMap, loading, loadAll };
 };
+
+// Fallback for image height calculation if helper is missing
+const getImageHeight = () => 'h-64';
 
 // ==================== PRESENTATIONAL COMPONENTS ====================
 const NoImageDisplay = React.memo(({ message = "การแสดงผลภาพถ่ายมีปัญหา" }) => (
@@ -266,37 +245,16 @@ const CandidateShow = () => {
 
   const [candidates, setCandidates] = useState([]);
   const [detectionType, setDetectionType] = useState('');
-
-  const dt_cook = readCookie('detectionType');
-  const cookieImage = readCookie('img_ref') || '';
-  console.log(dt_cook);
-
-  useEffect(() => {
-    if (!dt_cook) return;
-    try {
-      if (String(dt_cook).toLowerCase() === 'drug') {
-        convertImgRefToVector().catch(() => {});
-      }
-    } catch (e) {
-      console.error('Error checking dt_cook for convert trigger:', e);
-    }
-  }, [dt_cook]);
-  
-  const { images: gunReferenceImages, loading: isLoadingImages, getModelImage } = useGunReferenceImages();
-  const { detailsMap: narcoticsDetails, loading: isLoadingNarcotics, loadAll: loadAllNarcoticsDetails } = useNarcoticsDetails(candidates, detectionType);
-
-  const candidatesCount = useMemo(() => Math.max(0, candidates.length - 1), [candidates]);
-
-  const getImageHeight = useCallback(() => {
-    return 'h-72';
-  }, []);
+  // count of candidate items shown in UI
+  const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
+  const cookieDt = (readCookie('detectionType') || '').toLowerCase();
+  console.log(cookieDt);
 
   useEffect(() => {
     if (!location.state) return;
     const { analysisResult, result, image, fromCamera: fc, sourcePath: sp } = location.state;
-    console.log(result);
     const data = analysisResult || result || {};
-    setImageUrl(image || cookieImage || '');
+    setImageUrl(image || '');
     setFromCamera(!!fc);
     setSourcePath(sp || '');
     setIsUnknownObject(false);
@@ -305,7 +263,15 @@ const CandidateShow = () => {
     setBrandData([]);
     setSelectedIndex(0);
 
-    const dt = (data.detectionType || '').toString().toLowerCase();
+    if (cookieDt === 'drug' && image) {
+      convertImgRefToVector(image).catch(err => console.warn('convertImgRefToVector (from cookie) failed:', err));
+    }
+
+    const dt = ('').toString().toLowerCase();
+
+    if ((dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) && image) {
+      convertImgRefToVector(image).catch(err => console.warn('convertImgRefToVector failed:', err));
+    }
 
     if (dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) {
       setDetectionType('Drug');
@@ -429,11 +395,6 @@ const CandidateShow = () => {
   const handleSelectCandidate = useCallback((index) => {
     if (index === -1 || index === undefined) return;
     setSelectedIndex(index);
-    const candidate = candidates[index];
-    if (detectionType === 'Drug' && candidate?.narcotic_id) {
-      fetchNarcoticById(candidate.narcotic_id).then(d => {
-      }).catch(() => {});
-    }
   }, [candidates, detectionType]);
 
   const handleConfirm = useCallback(async () => {
@@ -505,7 +466,7 @@ const CandidateShow = () => {
           details: [{ pill_name: 'ยาเสพติดไม่ทราบชนิด', confidence: 0, narcotic_id: null }]
         };
       } else {
-        const narcoticDetail = narcoticsDetails[selected.narcotic_id];
+        const narcoticDetail = null;
         const drugExhibit = await findExhibitByNarcoticId(selected.narcotic_id);
         result = {
           exhibit_id: drugExhibit?.id || null,
@@ -548,7 +509,7 @@ const CandidateShow = () => {
     navigate('/evidenceProfile', {
       state: { type: evidenceType, result, evidence: evidenceData, fromCamera, sourcePath }
     });
-  }, [candidates, selectedIndex, detectionType, isUnknownObject, brandData, narcoticsDetails, navigate, imageUrl, fromCamera, sourcePath]);
+  }, [candidates, selectedIndex, detectionType, isUnknownObject, brandData, navigate, imageUrl, fromCamera, sourcePath]);
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-white">
@@ -584,68 +545,18 @@ const CandidateShow = () => {
             </div>
           </div>
         ) : detectionType === 'Gun' ? (
-          <div className={`space-y-3`}>
-            {brandData.length > 0 ? (
-              <>
-                {brandData.filter(b => b.name !== 'Unknown').map((brand, idx) => (
-                  <GunBrandPanel
-                    key={brand.name + idx}
-                    brand={brand}
-                    brandIdx={idx}
-                    expanded={!!expandedBrands[brand.name]}
-                    toggle={toggleBrand}
-                    getModelImage={getModelImage}
-                    isLoadingImages={isLoadingImages}
-                    selectedIndex={selectedIndex}
-                    candidates={candidates}
-                    onSelect={(i) => setSelectedIndex(i)}
-                  />
-                ))}
-
-                {/* Unknown weapon option if exists in brandData */}
-                {brandData.find(b => b.name === 'Unknown') && (
-                  <div
-                    className={`p-4 border border-gray-300 rounded-lg flex items-center justify-between ${selectedIndex === candidates.findIndex(c => c.isUnknownWeapon) ? 'border-[#990000] bg-red-50' : ''}`}
-                    onClick={() => setSelectedIndex(candidates.findIndex(c => c.isUnknownWeapon))}
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">อาวุธปืนไม่ทราบชนิด</div>
-                      <div className={`text-sm text-gray-500`}>
-                        ตัวเลือกสำหรับอาวุธปืนที่ไม่สามารถระบุยี่ห้อหรือรุ่นได้
-                      </div>
-                    </div>
-                    {selectedIndex === candidates.findIndex(c => c.isUnknownWeapon) && (
-                      <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div
-                className={`p-4 border border-gray-300 rounded-lg flex items-center justify-between ${selectedIndex === 0 ? 'border-[#990000] bg-red-50' : ''}`}
-                onClick={() => setSelectedIndex(0)}
-              >
-                <div className="flex-1">
-                  <div className="font-medium">อาวุธปืนไม่ทราบชนิด</div>
-                  <div className={`text-sm text-gray-500`}>
-                    ตัวเลือกสำหรับอาวุธปืนที่ไม่สามารถระบุยี่ห้อหรือรุ่นได้
-                  </div>
-                </div>
-                {selectedIndex === 0 && (
-                  <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
+          <>
+            {/* Gun UI temporarily disabled to avoid runtime errors from undefined imports/hooks.
+                Restore this block when getModelImage/isLoadingImages/GunBrandPanel are available. */}
+            <div className="p-4 text-center text-gray-500">
+              ฟีเจอร์แสดงผลอาวุธปืนถูกปิดชั่วคราว (disabled)
+            </div>
+          </>
+         ) : (
           <div className={`space-y-3`}>
             {candidates.length > 0 ? (
               candidates.map((candidate, index) => {
-                const narcoticDetail = candidate.narcotic_id ? narcoticsDetails[candidate.narcotic_id] : null;
+                const narcoticDetail = null;
                 return (
                   <div
                     key={`${candidate.label}-${index}`}
@@ -661,7 +572,7 @@ const CandidateShow = () => {
                           onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}
                         />
                       </div>
-                    ) : isLoadingNarcotics && !candidate.isUnknownDrug ? (
+                    ) : false && !candidate.isUnknownDrug ? (
                       <div className="mr-3 flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                       </div>
@@ -696,16 +607,10 @@ const CandidateShow = () => {
                   </div>
                 );
               })
-            ) : (
-              <div className={`p-4 text-center text-gray-500`}>ไม่พบวัตถุพยานที่ตรงกับเงื่อนไข</div>
-            )}
-          </div>
-        )}
-
-        {!isLoadingNarcotics && candidates.some(c => c.narcotic_id && !narcoticsDetails[c.narcotic_id]) && (
-          <button onClick={() => loadAllNarcoticsDetails(candidates)} className="mt-2 p-2 text-xs text-blue-600 hover:underline">
-            โหลดข้อมูลเพิ่มเติมอีกครั้ง
-          </button>
+             ) : (
+               <div className={`p-4 text-center text-gray-500`}>ไม่พบวัตถุพยานที่ตรงกับเงื่อนไข</div>
+             )}
+           </div>
         )}
 
         <div className="h-4" />

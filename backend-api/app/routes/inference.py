@@ -13,7 +13,7 @@ async def analyze_image(image: UploadFile = File(...)):
     try:
         file_content = await image.read()
         
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             try:
                 response = await client.post(
                     target_url,
@@ -22,12 +22,12 @@ async def analyze_image(image: UploadFile = File(...)):
                         "Accept": "application/json",
                         "User-Agent": "Backend-API/1.0"
                     },
-                    timeout=120.0
+                    timeout=300.0
                 )
             except httpx.TimeoutException:
                 raise HTTPException(
                     status_code=504,
-                    detail="AI service request timed out after 120 seconds"
+                    detail="AI service request timed out after 300 seconds"
                 )
             except httpx.ConnectError as conn_exc:
                 raise HTTPException(
