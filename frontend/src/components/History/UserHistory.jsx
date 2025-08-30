@@ -48,8 +48,6 @@ const UserHistory = () => {
     handleClearFilters,
     getFilterLabels,
     removeFilter,
-    handleDeleteHistory,
-
     setFilters = () => {},
   } = useHistoryData();
 

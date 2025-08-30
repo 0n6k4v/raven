@@ -18,6 +18,7 @@ const Camera = lazy(() => import('./pages/Camera'))
 const ImagePreview = lazy(() => import('./pages/ImagePreview'))
 const CandidateShow = lazy(() => import('./pages/CandidateShow'))
 const History = lazy(() => import('./pages/History'))
+const EvidenceHistoryProfile = lazy(() => import('./pages/EvidenceHistoryProfile'))
 
 const App = memo(function App() {
   return (
@@ -70,6 +71,9 @@ const App = memo(function App() {
         >
           {/* Evidence Profile */}
           {/* <Route path='/evidenceProfile' element={<EvidenceProfile />} /> */}
+
+          {/* History */}
+          <Route path='/history/detail' element={<EvidenceHistoryProfile />} />
         </Route>
 
         {/* Fallback route for unmatched paths */}
