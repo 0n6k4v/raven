@@ -51,8 +51,14 @@ const mapApiItem = (item) => {
       } else {
         exhibitName = item.exhibit.subcategory || item.exhibit.category || 'ไม่ระบุชื่อ';
       }
-    } else {
-      exhibitName = item.exhibit.subcategory || item.exhibit.category || 'ไม่ระบุชื่อ';
+    }
+    if (item.exhibit.narcotics) {
+      const narcotic = Array.isArray(item.exhibit.narcotics) ? item.exhibit.narcotics[0] : item.exhibit.narcotics;
+      if (narcotic) {
+        exhibitName = narcotic.characteristics || narcotic.drug_type || narcotic.drug_category || 'ไม่ระบุชื่อ';
+      } else {
+        exhibitName = item.exhibit.subcategory || item.exhibit.category || 'ไม่ระบุชื่อ';
+      }
     }
   }
 

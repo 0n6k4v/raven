@@ -57,6 +57,8 @@ async def get_all_histories(db: AsyncSession, user_id: Optional[int] = None) -> 
                         narcotic_dict = {c.name: getattr(narc, c.name) for c in narc.__table__.columns}
                         narcotics_list.append(narcotic_dict)
                 exhibit_dict['narcotics'] = narcotics_list
+
+            history_dict['exhibit'] = exhibit_dict
         
         location_names = await get_location_names(db, history.subdistrict_id)
         

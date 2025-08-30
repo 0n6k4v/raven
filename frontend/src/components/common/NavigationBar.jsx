@@ -107,7 +107,7 @@ const Sidebar = memo(function Sidebar({
         <div className="p-4">
           <button
             onClick={toggleSidebar}
-            className="text-white hover:text-gray-300 transition-colors"
+            className="text-white hover:text-gray-300 transition-colors cursor-pointer"
             aria-label="Toggle sidebar"
             type="button"
           >
@@ -126,7 +126,7 @@ const Sidebar = memo(function Sidebar({
                     ? handleUploadOptionClick(e)
                     : handleNavClick(e, item.path, item.id)
                 }
-                className={`flex items-center space-x-6 px-4 py-4 w-full text-left hover:bg-[#444444] transition-all ${
+                className={`flex items-center space-x-6 px-4 py-4 w-full text-left hover:bg-[#444444] transition-all cursor-pointer ${
                   activeTab === item.id ? "bg-[#444444]" : ""
                 }`}
                 aria-current={activeTab === item.id ? "page" : undefined}
@@ -164,7 +164,7 @@ const BottomNav = memo(function BottomNav({
             onClick={(e) => handleNavClick(e, "/home", "home")}
             className={`flex flex-col items-center justify-center w-16 h-full transition-all duration-200 ${
               activeTab === "home" ? "text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            } cursor-pointer`}
             aria-current={activeTab === "home" ? "page" : undefined}
             type="button"
           >
@@ -175,7 +175,7 @@ const BottomNav = memo(function BottomNav({
             onClick={(e) => handleNavClick(e, "/history", "history")}
             className={`flex flex-col items-center justify-center w-16 h-full transition-all duration-200 ${
               activeTab === "history" ? "text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            } cursor-pointer`}
             aria-current={activeTab === "history" ? "page" : undefined}
             type="button"
           >
@@ -184,7 +184,7 @@ const BottomNav = memo(function BottomNav({
           </button>
           <button
             onClick={(e) => handleNavClick(e, "/camera", "camera")}
-            className="flex flex-col items-center justify-center w-16 -mt-6"
+            className="flex flex-col items-center justify-center w-16 -mt-6 cursor-pointer"
             type="button"
           >
             <div className="bg-crimson rounded-full p-4 shadow shadow-red-900/30 transition-transform duration-200 hover:scale-105 relative">
@@ -195,7 +195,7 @@ const BottomNav = memo(function BottomNav({
             onClick={(e) => handleNavClick(e, "/map", "map")}
             className={`flex flex-col items-center justify-center w-16 h-full transition-all duration-200 ${
               activeTab === "map" ? "text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            } cursor-pointer`}
             aria-current={activeTab === "map" ? "page" : undefined}
             type="button"
           >
@@ -206,7 +206,7 @@ const BottomNav = memo(function BottomNav({
             onClick={() => setIsBottomSheetOpen(true)}
             className={`flex flex-col items-center justify-center w-16 h-full transition-all duration-200 ${
               isBottomSheetOpen ? "text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            } cursor-pointer`}
             aria-expanded={isBottomSheetOpen}
             type="button"
           >
@@ -257,14 +257,14 @@ const BottomSheet = memo(function BottomSheet({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="flex-shrink-0 w-full flex justify-center pt-3 pb-3 cursor-grab">
+        <div className="flex-shrink-0 w-full flex justify-center pt-3 pb-3 cursor-grab active:cursor-grabbing">
           <div className="w-10 h-1.5 bg-gray-500 rounded-full"></div>
         </div>
         <div className="flex-shrink-0 px-4 pb-4 flex items-center justify-between border-b border-gray-700/50">
           <h2 className="text-white text-lg font-medium">เมนูเพิ่มเติม</h2>
           <button
             onClick={closeBottomSheet}
-            className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700"
+            className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700 cursor-pointer"
             aria-label="Close menu"
             type="button"
           >
@@ -277,7 +277,7 @@ const BottomSheet = memo(function BottomSheet({
               <button
                 key={item.id}
                 onClick={(e) => handleBottomSheetItemClick(e, item)}
-                className="flex flex-col items-center justify-start p-2 rounded-lg hover:bg-[#333333] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#555555]"
+                className="flex flex-col items-center justify-start p-2 rounded-lg hover:bg-[#333333] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#555555] cursor-pointer"
                 style={{ minHeight: "90px" }}
                 type="button"
               >

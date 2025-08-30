@@ -168,7 +168,7 @@ const HistoryCard = ({
                 <img
                   src={item.image}
                   alt={item?.name ?? 'รูปภาพวัตถุพยาน'}
-                  className="w-24 h-24 object-cover rounded-md"
+                  className="w-24 h-24 object-contain rounded-md"
                   onError={handleImageError}
                 />
               </div>
