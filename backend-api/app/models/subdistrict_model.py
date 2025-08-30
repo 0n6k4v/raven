@@ -17,6 +17,7 @@ class Subdistrict(Base):
 
     # Relationships
     district: Mapped["District"] = relationship("District", back_populates="subdistricts", lazy="joined")
+    histories = relationship("History", back_populates="subdistrict")
 
     def to_dict(self) -> dict:
         return {

@@ -17,4 +17,7 @@ class Exhibit(Base):
         cascade="all, delete-orphan"
     )
 
+    # Relationships
+    histories = relationship("History", back_populates="exhibit")
+    
     __table_args__ = (Index("ix_exhibits_id", "id"),)

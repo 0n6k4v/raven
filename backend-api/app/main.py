@@ -5,7 +5,7 @@ from app.routes import (
     auth_router, user_router, role_router, 
     province_router, district_router, subdistrict_router, 
     exhibit_router, narcotic_router, drug_form_router,
-    inference_router, vector_router
+    inference_router, vector_router, history_router
 )
 
 def create_app() -> FastAPI:
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(drug_form_router, prefix="/api")
     app.include_router(inference_router, prefix="/api")
     app.include_router(vector_router, prefix="/api")
+    app.include_router(history_router, prefix="/api")
 
     @app.get("/", tags=["Health"])
     async def main():

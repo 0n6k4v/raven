@@ -108,7 +108,7 @@ const useHistoryData = () => {
   const [popup, setPopup] = useState({ open: false, type: '', message: '' });
   const [popupCountdown, setPopupCountdown] = useState(DEFAULT_POPUP_COUNT);
 
-  /* ========================= API FETCH (using fetch) ========================= */
+  /* ========================= API FETCH ========================= */
   const fetchHistoryData = useCallback(async (options = {}) => {
     setIsLoading(true);
     setError(null);
