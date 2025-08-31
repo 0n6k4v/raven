@@ -48,18 +48,29 @@ const mapApiItem = (item) => {
     images: exhibitImages = [],
   } = exhibit;
 
+  const id = item.id || null;
   const category = exhibitCategory || 'ไม่ระบุหมวดหมู่';
   let exhibitName = 'ไม่ระบุชื่อ';
   const discovererName = item.discoverer_name || 'ไม่มีข้อมูล';
+  const confidence = item.ai_confidence ?? null;
+  const timestamp = safeParseTimestamp(dateToFormat);
+  const province = item.province_name || 'ไม่ทราบจังหวัด';
+  const district = item.district_name || 'ไม่ทราบอำเภอ/เขต';
+  const subdistrict = item.subdistrict_name || 'ไม่ทราบตำบล/แขวง';
 
-  let drugCategory = 'ไม่มีข้อมูล';
-  let drugType = 'ไม่มีข้อมูล';
+  // pick image
+  let imageUrl = item.photo_url || '';
+  if (!imageUrl && exhibitImages && Array.isArray(exhibitImages) && exhibitImages.length) {
+    const sorted = [...exhibitImages].sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    imageUrl = sorted[0]?.image_url || imageUrl;
+  }
 
+  // derive exhibitName from firearms/narcotics if available
   if (firearmObjData) {
     const firearm = Array.isArray(firearmObjData) ? firearmObjData[0] : firearmObjData;
     if (firearm) {
-      const parts = [firearm.brand, firearm.series, firearm.model].filter(Boolean);
-      exhibitName = parts.length ? parts.join(' ') : (exhibitSubcategory || exhibitCategory || 'ไม่ระบุชื่อ');
+      const parts = [firearm.brand, firearm.model].filter(Boolean);
+      exhibitName = parts.length ? parts.join(' ') : (firearm.brand || firearm.model || 'ไม่ระบุชื่อ');
     } else {
       exhibitName = exhibitSubcategory || exhibitCategory || 'ไม่ระบุชื่อ';
     }
@@ -69,8 +80,6 @@ const mapApiItem = (item) => {
     const narcotic = Array.isArray(narcoticObjData) ? narcoticObjData[0] : narcoticObjData;
     if (narcotic) {
       exhibitName = narcotic.characteristics || narcotic.drug_type || narcotic.drug_category || exhibitName;
-      drugCategory = narcotic.drug_category || drugCategory;
-      drugType = narcotic.drug_type || drugType;
     } else {
       exhibitName = exhibitSubcategory || exhibitCategory || exhibitName;
     }
@@ -82,6 +91,8 @@ const mapApiItem = (item) => {
   if (item.district_name) locationParts.push(`อ.${item.district_name}`);
   if (item.province_name) locationParts.push(`จ.${item.province_name}`);
 
+  const location = locationParts.join(', ');
+
   const addressParts = [];
   if (item.house_no) addressParts.push(`บ้านเลขที่ ${item.house_no}`);
   if (item.village_no) addressParts.push(`หมู่ ${item.village_no}`);
@@ -89,42 +100,52 @@ const mapApiItem = (item) => {
   if (item.road) addressParts.push(`ถนน${item.road}`);
   if (addressParts.length) locationParts.push(addressParts.join(' '));
 
-  let imageUrl = item.photo_url || '';
-  if (!imageUrl && item.exhibit && Array.isArray(item.exhibit.images) && item.exhibit.images.length) {
-    const sorted = [...item.exhibit.images].sort((a, b) => (a.priority || 999) - (b.priority || 999));
-    imageUrl = sorted[0]?.image_url || imageUrl;
-  }
-
-  if (narcoticObjData) {
-    return {
-      id: item.id,
-      date,
-      time,
-      category,
-      drugCategory: drugCategory,
-      drugType: drugType,
-      image: imageUrl,
-      name: exhibitName,
-      location: locationParts.join(', '),
-      discovererName: discovererName,
-      timestamp: safeParseTimestamp(dateToFormat),
-      confidence: item.ai_confidence || null,
-      originalData: item,
-    };
-  }
-
-  return {
-    id: item.id,
+  const base = {
+    id,
     date,
     time,
     category,
     image: imageUrl,
     name: exhibitName,
-    location: locationParts.join(', '),
-    discovered_by: item.discovered_name ?? 'ไม่มีข้อมูล',
-    timestamp: safeParseTimestamp(dateToFormat),
+    location,
+    discovererName,
+    confidence,
+    province,
+    district,
+    subdistrict,
     originalData: item,
+    timestamp,
   };
+
+  if (narcoticObjData) {
+    const narcotic = Array.isArray(narcoticObjData) ? narcoticObjData[0] : narcoticObjData;
+    const drugCategory = narcotic?.drug_category || 'ไม่มีข้อมูล';
+    const drugType = narcotic?.drug_type || 'ไม่มีข้อมูล';
+    return {
+      ...base,
+      drugCategory,
+      drugType,
+    };
+  }
+
+  if (firearmObjData) {
+    const firearm = Array.isArray(firearmObjData) ? firearmObjData[0] : firearmObjData;
+    const firearmSubCategory = exhibitSubcategory || 'ไม่มีข้อมูล';
+    const firearmMechanism = firearm?.mechanism || 'ไม่มีข้อมูล';
+    const firearmBrand = firearm?.brand || 'ไม่มีข้อมูล';
+    const firearmSeries = firearm?.series || 'ไม่มีข้อมูล';
+    const firearmModel = firearm?.model || 'ไม่มีข้อมูล';
+    return {
+      ...base,
+      firearmSubCategory,
+      firearmMechanism,
+      firearmBrand,
+      firearmSeries,
+      firearmModel,
+    };
+  }
+
+  return null;
 };
 
 /* ========================= CUSTOM HOOK ========================= */
@@ -161,7 +182,8 @@ const useHistoryData = () => {
       }
       const respJson = await resp.json().catch(() => null);
       const payload = Array.isArray(respJson?.data) ? respJson.data : (Array.isArray(respJson) ? respJson : []);
-      const mapped = payload.map(mapApiItem).sort((a, b) => b.timestamp - a.timestamp);
+      const mapped = (Array.isArray(payload) ? payload.map(mapApiItem).filter(Boolean) : [])
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       if (options.userId) {
         const uid = String(options.userId);

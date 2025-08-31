@@ -9,6 +9,7 @@ from .narcotic_model import (
     NarcoticPill,
 )
 from .drug_form_model import DrugForm
+from .firearm_model import Firearm
 
 __all__ = [
     "Exhibit",
@@ -20,4 +21,5 @@ __all__ = [
     "NarcoticImageVector",
     "NarcoticPill",
     "DrugForm",
+    "Firearm",
 ]

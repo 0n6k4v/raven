@@ -62,8 +62,6 @@ const DrugHistoryProfile = React.memo(function DrugHistoryProfile({ item }) {
   const locationParts = useMemo(() => parseLocationParts(item?.location || ''), [item?.location])
   const rawConfidence = item?.confidence ?? 0
   const confidencePct = useMemo(() => clampPercent(rawConfidence), [rawConfidence])
-
-  console.log(item);
   
   const imageSrc = item?.image || item?.photo || ''
   const onImgError = (e) => {

@@ -10,7 +10,8 @@ from app.services.user_service import get_discoverer_and_modifier_names
 
 async def get_all_histories(db: AsyncSession, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
     stmt = select(history_model.History, func.ST_AsText(history_model.History.location).label('location_wkt')).options(
-        joinedload(history_model.History.exhibit).joinedload(Exhibit.narcotics)
+        joinedload(history_model.History.exhibit).joinedload(Exhibit.narcotics),
+        joinedload(history_model.History.exhibit).joinedload(Exhibit.firearms)
     )
     
     if user_id is not None:
@@ -50,6 +51,7 @@ async def get_all_histories(db: AsyncSession, user_id: Optional[int] = None) -> 
         if history.exhibit:
             exhibit_dict = {c.name: getattr(history.exhibit, c.name) for c in history.exhibit.__table__.columns}
             
+            # Narcotics
             if getattr(history.exhibit, 'narcotics', None):
                 narcotics_list = []
                 for narc in (history.exhibit.narcotics if hasattr(history.exhibit.narcotics, '__iter__') else [history.exhibit.narcotics]):
@@ -57,6 +59,15 @@ async def get_all_histories(db: AsyncSession, user_id: Optional[int] = None) -> 
                         narcotic_dict = {c.name: getattr(narc, c.name) for c in narc.__table__.columns}
                         narcotics_list.append(narcotic_dict)
                 exhibit_dict['narcotics'] = narcotics_list
+
+            # Firearms
+            if getattr(history.exhibit, 'firearms', None):
+                firearms_list = []
+                for firearm in (history.exhibit.firearms if hasattr(history.exhibit.firearms, '__iter__') else [history.exhibit.firearms]):
+                    if hasattr(firearm, '__table__'):
+                        firearm_dict = {c.name: getattr(firearm, c.name) for c in firearm.__table__.columns}
+                        firearms_list.append(firearm_dict)
+                exhibit_dict['firearms'] = firearms_list
 
             history_dict['exhibit'] = exhibit_dict
         
