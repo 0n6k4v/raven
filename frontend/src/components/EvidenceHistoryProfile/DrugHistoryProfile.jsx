@@ -60,8 +60,11 @@ ConfidenceMeter.defaultProps = { confidence: 0 }
 /* ========================= MAIN COMPONENT ========================= */
 const DrugHistoryProfile = React.memo(function DrugHistoryProfile({ item }) {
   const locationParts = useMemo(() => parseLocationParts(item?.location || ''), [item?.location])
-  const confidencePct = useMemo(() => clampPercent(item?.ai_confidence ?? 0), [item?.ai_confidence])
+  const rawConfidence = item?.confidence ?? 0
+  const confidencePct = useMemo(() => clampPercent(rawConfidence), [rawConfidence])
 
+  console.log(item);
+  
   const imageSrc = item?.image || item?.photo || ''
   const onImgError = (e) => {
     // avoid throwing if element already uses placeholder
@@ -75,7 +78,7 @@ const DrugHistoryProfile = React.memo(function DrugHistoryProfile({ item }) {
         <img
           src={imageSrc || PLACEHOLDER_IMG}
           alt={item?.name || 'ภาพวัตถุพยาน'}
-          className="max-w-full h-auto object-contain max-h-96 rounded-md border border-gray-300"
+          className="max-w-full h-auto object-contain max-h-96 rounded-md"
           onError={onImgError}
         />
       </div>
@@ -98,11 +101,11 @@ const DrugHistoryProfile = React.memo(function DrugHistoryProfile({ item }) {
                 <div className="space-y-2 text-sm text-gray-700">
                   <div className="flex">
                     <span className="text-gray-600 w-32">ประเภท:</span>
-                    <span className="font-medium">{item?.drug_type || item?.subcategory || 'ไม่ระบุ'}</span>
+                    <span className="font-medium">{item?.drugType || 'ไม่ระบุ'}</span>
                   </div>
                   <div className="flex">
                     <span className="text-gray-600 w-32">หมวดหมู่:</span>
-                    <span className="font-medium">{item?.drug_category || 'ไม่ระบุ'}</span>
+                    <span className="font-medium">{item?.drugCategory || 'ไม่ระบุ'}</span>
                   </div>
                   {item?.weight_grams != null && (
                     <div className="flex">
@@ -156,7 +159,7 @@ const DrugHistoryProfile = React.memo(function DrugHistoryProfile({ item }) {
                   </div>
                   <div className="flex">
                     <span className="text-gray-600 w-32">ผู้พบ:</span>
-                    <span className="font-medium">{item?.discoverer || item?.discovered_by || 'ไม่ระบุ'}</span>
+                    <span className="font-medium">{item?.discovererName || 'ไม่ระบุ'}</span>
                   </div>
                   {item?.quantity != null && (
                     <div className="flex">
@@ -197,9 +200,9 @@ DrugHistoryProfile.propTypes = {
     location: PropTypes.string,
     date: PropTypes.string,
     time: PropTypes.string,
-    discoverer: PropTypes.string,
+    discovererName: PropTypes.string,
     quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    ai_confidence: PropTypes.number,
+    confidence: PropTypes.number,
   }),
 }
 

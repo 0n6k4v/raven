@@ -39,26 +39,40 @@ const mapApiItem = (item) => {
     }
   }
 
-  let category = 'ไม่ระบุหมวดหมู่';
+  const { exhibit = {} } = item;
+  const {
+    narcotics: narcoticObjData = null,
+    firearms: firearmObjData = null,
+    category: exhibitCategory,
+    subcategory: exhibitSubcategory,
+    images: exhibitImages = [],
+  } = exhibit;
+
+  const category = exhibitCategory || 'ไม่ระบุหมวดหมู่';
   let exhibitName = 'ไม่ระบุชื่อ';
-  if (item.exhibit) {
-    category = item.exhibit.category || category;
-    if (item.exhibit.firearms) {
-      const firearm = Array.isArray(item.exhibit.firearms) ? item.exhibit.firearms[0] : item.exhibit.firearms;
-      if (firearm) {
-        const parts = [firearm.brand, firearm.series, firearm.model].filter(Boolean);
-        exhibitName = parts.length ? parts.join(' ') : (item.exhibit.subcategory || 'ไม่ระบุชื่อ');
-      } else {
-        exhibitName = item.exhibit.subcategory || item.exhibit.category || 'ไม่ระบุชื่อ';
-      }
+  const discovererName = item.discoverer_name || 'ไม่มีข้อมูล';
+
+  let drugCategory = 'ไม่มีข้อมูล';
+  let drugType = 'ไม่มีข้อมูล';
+
+  if (firearmObjData) {
+    const firearm = Array.isArray(firearmObjData) ? firearmObjData[0] : firearmObjData;
+    if (firearm) {
+      const parts = [firearm.brand, firearm.series, firearm.model].filter(Boolean);
+      exhibitName = parts.length ? parts.join(' ') : (exhibitSubcategory || exhibitCategory || 'ไม่ระบุชื่อ');
+    } else {
+      exhibitName = exhibitSubcategory || exhibitCategory || 'ไม่ระบุชื่อ';
     }
-    if (item.exhibit.narcotics) {
-      const narcotic = Array.isArray(item.exhibit.narcotics) ? item.exhibit.narcotics[0] : item.exhibit.narcotics;
-      if (narcotic) {
-        exhibitName = narcotic.characteristics || narcotic.drug_type || narcotic.drug_category || 'ไม่ระบุชื่อ';
-      } else {
-        exhibitName = item.exhibit.subcategory || item.exhibit.category || 'ไม่ระบุชื่อ';
-      }
+  }
+
+  if (narcoticObjData) {
+    const narcotic = Array.isArray(narcoticObjData) ? narcoticObjData[0] : narcoticObjData;
+    if (narcotic) {
+      exhibitName = narcotic.characteristics || narcotic.drug_type || narcotic.drug_category || exhibitName;
+      drugCategory = narcotic.drug_category || drugCategory;
+      drugType = narcotic.drug_type || drugType;
+    } else {
+      exhibitName = exhibitSubcategory || exhibitCategory || exhibitName;
     }
   }
 
@@ -81,6 +95,24 @@ const mapApiItem = (item) => {
     imageUrl = sorted[0]?.image_url || imageUrl;
   }
 
+  if (narcoticObjData) {
+    return {
+      id: item.id,
+      date,
+      time,
+      category,
+      drugCategory: drugCategory,
+      drugType: drugType,
+      image: imageUrl,
+      name: exhibitName,
+      location: locationParts.join(', '),
+      discovererName: discovererName,
+      timestamp: safeParseTimestamp(dateToFormat),
+      confidence: item.ai_confidence || null,
+      originalData: item,
+    };
+  }
+
   return {
     id: item.id,
     date,
@@ -89,7 +121,7 @@ const mapApiItem = (item) => {
     image: imageUrl,
     name: exhibitName,
     location: locationParts.join(', '),
-    discovered_by: item.discovered_by ?? 'ไม่ระบุ',
+    discovered_by: item.discovered_name ?? 'ไม่มีข้อมูล',
     timestamp: safeParseTimestamp(dateToFormat),
     originalData: item,
   };

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react';
 import { PiImageBroken } from 'react-icons/pi';
 import { IoClose } from 'react-icons/io5';
 import { readCookie } from '../utils/cookies';
+import { NarcoticApiService } from '../services/api/narcoticApiService';
 // import { fetchGunReferenceImages, getGunReferenceImage } from '../../services/gunReferenceService';
 // import { fetchNarcoticById } from '../../services/narcoticReferenceService';
 
@@ -23,7 +24,6 @@ async function convertImgRefToVector(dataUrl, opts = { timeoutMs: 120000 }) {
     const imgDataUrl = dataUrl;
     if (!imgDataUrl) {
       clearTimeout(id);
-      console.warn('No image data provided; skipping convert_image_ref_to_vector');
       return null;
     }
     async function dataUrlToBlob(dUrl) {
@@ -44,11 +44,9 @@ async function convertImgRefToVector(dataUrl, opts = { timeoutMs: 120000 }) {
     clearTimeout(id);
     let payload;
     try { payload = await res.json(); } catch { payload = await res.text(); }
-    console.log('convert_image_ref_to_vector response:', payload);
     return payload;
   } catch (err) {
     clearTimeout(id);
-    console.error('convert_image_ref_to_vector request failed:', err);
     throw err;
   }
 }
@@ -104,8 +102,7 @@ const findExhibitByNarcoticId = async (narcoticId) => {
   return null;
 };
 
-// stubbed: fetchGunReferenceImages / getGunReferenceImage imports are commented out in this branch.
-// Provide a safe no-op implementation so UI won't crash when those services are unavailable.
+// ==================== CUSTOM HOOKS ====================
 const useGunReferenceImages = () => {
   const [images] = useState({ default: '' });
   const [loading] = useState(false);
@@ -113,8 +110,6 @@ const useGunReferenceImages = () => {
   return { images, loading, getModelImage };
 };
 
-// stubbed: fetchNarcoticById import is commented out in this branch.
-// Return empty/no-op implementation to avoid runtime ReferenceError.
 const useNarcoticsDetails = (candidates, detectionType) => {
   const [detailsMap] = useState({});
   const [loading] = useState(false);
@@ -122,7 +117,6 @@ const useNarcoticsDetails = (candidates, detectionType) => {
   return { detailsMap, loading, loadAll };
 };
 
-// Fallback for image height calculation if helper is missing
 const getImageHeight = () => 'h-64';
 
 // ==================== PRESENTATIONAL COMPONENTS ====================
@@ -232,6 +226,7 @@ const GunBrandPanel = React.memo(({
 const CandidateShow = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const narcoticApiService = new NarcoticApiService();
   // const { isMobile, isDesktop, isTablet } = useDevice();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -245,7 +240,6 @@ const CandidateShow = () => {
 
   const [candidates, setCandidates] = useState([]);
   const [detectionType, setDetectionType] = useState('');
-  // count of candidate items shown in UI
   const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
   const cookieDt = (readCookie('detectionType') || '').toLowerCase();
   console.log(cookieDt);
@@ -264,14 +258,28 @@ const CandidateShow = () => {
     setSelectedIndex(0);
 
     if (cookieDt === 'drug' && image) {
-      convertImgRefToVector(image).catch(err => console.warn('convertImgRefToVector (from cookie) failed:', err));
+      (async () => {
+        try {
+          const payload = await convertImgRefToVector(image);
+          console.log(payload);
+          const imgRefVector = payload?.vector_base64;
+          if (imgRefVector) {
+            try {
+              const similarResults = await narcoticApiService.findSimilarNarcoticsWithBase64(imgRefVector);
+              console.log('findSimilarNarcoticsWithBase64 results:', similarResults);
+            } catch (apiErr) {
+              console.warn('findSimilarNarcoticsWithBase64 failed:', apiErr);
+            }
+          } else {
+            console.warn('No imgRefVector returned from convertImgRefToVector');
+          }
+        } catch (err) {
+          console.warn('convertImgRefToVector (from cookie) failed:', err);
+        }
+      })();
     }
 
     const dt = ('').toString().toLowerCase();
-
-    if ((dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) && image) {
-      convertImgRefToVector(image).catch(err => console.warn('convertImgRefToVector failed:', err));
-    }
 
     if (dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) {
       setDetectionType('Drug');

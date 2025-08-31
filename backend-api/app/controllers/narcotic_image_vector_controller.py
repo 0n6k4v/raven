@@ -1,37 +1,30 @@
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-import base64
-import numpy as np
-
-def decode_base64_vector(vector_base64: str) -> List[float]:
-    if not vector_base64:
-        raise ValueError("vector_base64 is required")
-    raw = base64.b64decode(vector_base64)
-    return np.frombuffer(raw, dtype=np.float32).tolist()
-
-def vector_to_pg_literal(vector: List[float]) -> str:
-    if not isinstance(vector, (list, tuple)):
-        raise ValueError("vector must be a list")
-    return f"[{','.join(str(float(x)) for x in vector)}]"
+from app.services.vector_service import VectorService
+import re
 
 async def search_similar_narcotics_with_vector(
     db: AsyncSession,
     vector: Optional[List[float]] = None,
     vector_base64: Optional[str] = None,
     top_k: int = 3,
-    similarity_threshold: float = 0.05
+    similarity_threshold: float = 0.05,
+    debug: bool = False
 ) -> List[Dict[str, Any]]:
     if vector_base64:
-        vector = decode_base64_vector(vector_base64)
+        vector = VectorService.decode_base64_vector(vector_base64)
     if not vector or len(vector) == 0:
         raise ValueError("Either vector or vector_base64 is required")
 
-    vector_str = vector_to_pg_literal(vector)
+    vector_str = VectorService.vector_to_pg_literal(vector)
 
-    query = text("""
+    if not re.match(r'^\[\s*-?\d+(\.\d+)?(?:\s*,\s*-?\d+(\.\d+)?)*\s*\]$', vector_str):
+        raise ValueError("Invalid vector format")
+
+    query = text(f"""
         WITH query_vector AS (
-            SELECT :vector::vector AS v
+            SELECT '{vector_str}'::vector AS v
         ),
         similarity_calc AS (
             SELECT 
@@ -52,9 +45,18 @@ async def search_similar_narcotics_with_vector(
         WHERE similarity > :threshold
     """)
 
+    if debug:
+        try:
+            count_q = text("SELECT COUNT(*) FROM narcotics_image_vectors")
+            count_res = await db.execute(count_q)
+            count = count_res.scalar_one()
+            print(f"[vector controller debug] narcotics_image_vectors count: {count}")
+        except Exception as e:
+            print(f"[vector controller debug] count failed: {e}")
+
     result = await db.execute(
         query,
-        {"vector": vector_str, "top_k": top_k, "threshold": similarity_threshold}
+        {"top_k": top_k, "threshold": similarity_threshold}
     )
     rows = result.mappings().all()
 
