@@ -33,8 +33,6 @@ const HistoryTableRow = ({
   NoImageComponent = null
 }) => {
   const [imageError, setImageError] = useState(false);
-
-  // detect whether NoImageComponent is a React element instance or a component type
   const isElementInstance = React.isValidElement(NoImageComponent);
   const NoImage = (!NoImageComponent || isElementInstance) ? DefaultNoImage : NoImageComponent;
 
@@ -72,12 +70,10 @@ const HistoryTableRow = ({
       );
     }
 
-    // if a React element instance was provided, clone it and pass small prop
     if (isElementInstance) {
       return React.cloneElement(NoImageComponent, { small: true });
     }
 
-    // otherwise render the component type (DefaultNoImage or provided component type)
     return <NoImage small />;
   }, [item?.image, item?.name, imageError, handleImageError, NoImageComponent, NoImage, isElementInstance]);
 

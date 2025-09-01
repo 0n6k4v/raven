@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { parseDateBE, formatDateToBE } from '../../utils/dateUtils';
+import { parseDateBE, formatDateToBE } from '../../../utils/dateUtils';
 
 /* ========================= CONSTANTS ========================= */
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;

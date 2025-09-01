@@ -9,7 +9,7 @@ import ErrorDisplay from '../common/ErrorDisplay';
 import Pagination from '../common/Pagination';
 import HistoryCard from './common/HistoryCard';
 import HistoryTableRow from './common/HistoryTableRow';
-import useHistoryData from '../../hooks/api/useHistoryData';
+import useHistoryData from '../../hooks/api/History/useHistoryData';
 import { useUser } from '../../hooks/useUser';
 
 /* ========================= CONSTANTS ========================= */
