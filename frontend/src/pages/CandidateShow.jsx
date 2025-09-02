@@ -298,8 +298,6 @@ const CandidateShow = () => {
                 }
               }
 
-              console.log(narcoticDetails);
-
               // สร้าง map ของ similarity จากผลการค้นหา (ถ้ามี) เพื่อรวมกับรายละเอียด
               const similarityMap = new Map();
               if (Array.isArray(similarResults)) {
@@ -308,20 +306,23 @@ const CandidateShow = () => {
                 });
               }
 
-              // แปลงรายละเอียดเป็น object สำหรับแสดงผล (candidate)
-              const formattedCandidates = (narcoticDetails || []).filter(Boolean).map(detail => ({
-                label: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
-                displayName: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
-                confidence: similarityMap.get(detail.id) ?? 0,
-                narcotic_id: detail.id,
-                drug_type: detail.drug_type || '',
-                drug_category: detail.drug_category || '',
-                characteristics: detail.characteristics || '',
-                similarity: similarityMap.get(detail.id) ?? 0,
-                example_images: detail.example_images[0].image_url || [],
-              }));
+              const formattedCandidates = (narcoticDetails || []).filter(Boolean).map(detail => {
+                const firstExampleUrl = Array.isArray(detail.example_images) && detail.example_images.length > 0
+                   ?detail.example_images[0]?.image_url || ''
+                  : '';
+                return {
+                  label: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
+                  displayName: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
+                  confidence: similarityMap.get(detail.id) ?? 0,
+                  narcotic_id: detail.id,
+                  drug_type: detail.drug_type || '',
+                  drug_category: detail.drug_category || '',
+                  characteristics: detail.characteristics || '',
+                  similarity: similarityMap.get(detail.id) ?? 0,
+                  example_images: firstExampleUrl,
+                };
+              });
 
-              // เพิ่มตัวเลือก "ไม่ทราบชนิด" เหมือนเดิม เพื่อให้ผู้ใช้เลือกได้
               formattedCandidates.push({
                 label: 'ยาเสพติดประเภทไม่ทราบชนิด',
                 displayName: 'ยาเสพติดประเภทไม่ทราบชนิด',
@@ -330,7 +331,8 @@ const CandidateShow = () => {
                 characteristics: 'ไม่ทราบอัตลักษณ์',
                 exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_DRUG,
                 drug_type: 'ไม่ทราบชนิด',
-                drug_category: 'ไม่ทราบประเภท'
+                drug_category: 'ไม่ทราบประเภท',
+                example_images: ''
               });
 
               setDetectionType('Drug');
@@ -632,20 +634,17 @@ const CandidateShow = () => {
           <div className={`space-y-3`}>
             {candidates.length > 0 ? (
               candidates.map((candidate, index) => {
-                console.log(candidate);
-                
-                const narcoticDetail = null;
                 return (
                   <div
                     key={`${candidate.label}-${index}`}
                     className={`p-4 border border-gray-300 rounded-lg flex items-start ${selectedIndex === index ? 'border-[#990000] bg-red-50' : ''}`}
                     onClick={() => setSelectedIndex(index)}
                   >
-                    {(candidate.narcotic_id && narcoticDetail && narcoticDetail.example_images && narcoticDetail.example_images.length > 0) ? (
+                    {(candidate.narcotic_id && candidate.example_images) ? (
                       <div className="mr-3 flex-shrink-0">
                         <img
                           src={candidate.example_images}
-                          alt={narcoticDetail.drug_type || candidate.label}
+                          alt={candidate.label}
                           className="w-16 h-16 object-contain rounded-lg border border-gray-300"
                           onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}
                         />
