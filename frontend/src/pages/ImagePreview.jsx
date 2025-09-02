@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, RotateCcw, ArrowLeft, Send } from 'lucide-react';
+import { RotateCcw, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tutorial } from '../constants/tutorialData';
-import { setCookie } from '../utils/cookies';
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -71,6 +70,7 @@ const useImagePreviewLogic = () => {
   }, []);
 
   const [imageData, setImageData] = useState(null);
+  const [croppedImage, setCroppedImage] = useState(null);
   const [mode, setMode] = useState(null);
   const [resolution, setResolution] = useState('');
   const [fromCamera, setFromCamera] = useState(false);
@@ -180,6 +180,18 @@ const useImagePreviewLogic = () => {
       }
 
       const result = await response.json();
+
+      // เก็บภาพที่ถูก crop (ถ้ามี) จาก response.objects
+      try {
+        if (Array.isArray(result.objects) && result.objects.length) {
+          const drugObj = result.objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug');
+          const anyCrop = result.objects.find(o => o.cropped_base64);
+          const responseCrop = (drugObj && drugObj.cropped_base64) || (anyCrop && anyCrop.cropped_base64) || null;
+          if (responseCrop) setCroppedImage(responseCrop);
+        }
+      } catch (e) {
+        console.warn('Failed to extract cropped image from response', e);
+      }
 
       try {
         const detectionType = result.objects[0]?.detection_type || '';
@@ -338,6 +350,7 @@ const useImagePreviewLogic = () => {
   return {
     isDesktop,
     imageData,
+    croppedImage,
     mode,
     resolution,
     fromCamera,

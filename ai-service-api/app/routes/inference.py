@@ -24,7 +24,7 @@ async def object_classify_service(
         temp.write(contents)
         
     try:
-        results = await asyncio.to_thread(_service.run_segment_model, temp_path, wait_for_model=True, wait_timeout=10)
+        results = await asyncio.to_thread(_service.run_segment_model, temp_path, wait_for_model=True, wait_timeout=10, include_crops=True)
         return JSONResponse(status_code=200, content=results)
         
     except ValueError as e:

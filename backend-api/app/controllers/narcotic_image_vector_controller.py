@@ -14,6 +14,7 @@ async def search_similar_narcotics_with_vector(
 ) -> List[Dict[str, Any]]:
     if vector_base64:
         vector = VectorService.decode_base64_vector(vector_base64)
+
     if not vector or len(vector) == 0:
         raise ValueError("Either vector or vector_base64 is required")
 
@@ -44,15 +45,6 @@ async def search_similar_narcotics_with_vector(
         SELECT * FROM similarity_calc
         WHERE similarity > :threshold
     """)
-
-    if debug:
-        try:
-            count_q = text("SELECT COUNT(*) FROM narcotics_image_vectors")
-            count_res = await db.execute(count_q)
-            count = count_res.scalar_one()
-            print(f"[vector controller debug] narcotics_image_vectors count: {count}")
-        except Exception as e:
-            print(f"[vector controller debug] count failed: {e}")
 
     result = await db.execute(
         query,

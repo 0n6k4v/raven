@@ -228,9 +228,9 @@ const CandidateShow = () => {
   const navigate = useNavigate();
   const narcoticApiService = new NarcoticApiService();
   // const { isMobile, isDesktop, isTablet } = useDevice();
-
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [imageUrl, setImageUrl] = useState('');
+  const [vectorImage, setVectorImage] = useState('');
   const [fromCamera, setFromCamera] = useState(false);
   const [sourcePath, setSourcePath] = useState('');
   const [expandedBrands, setExpandedBrands] = useState({});
@@ -246,9 +246,20 @@ const CandidateShow = () => {
 
   useEffect(() => {
     if (!location.state) return;
-    const { analysisResult, result, image, fromCamera: fc, sourcePath: sp } = location.state;
+    const { analysisResult, result, image, croppedImage: stateCroppedImage, fromCamera: fc, sourcePath: sp } = location.state;
     const data = analysisResult || result || {};
-    setImageUrl(image || '');
+    const displayImage = image || '';
+    let chosenVectorImage = image || '';
+    try {
+      const objects = data.objects || result?.objects || [];
+      const drugObj = Array.isArray(objects) ? objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug') : null;
+      const anyCrop = Array.isArray(objects) ? objects.find(o => o.cropped_base64) : null;
+      chosenVectorImage = stateCroppedImage || (drugObj && drugObj.cropped_base64) || (anyCrop && anyCrop.cropped_base64) || image || '';
+    } catch (e) {
+      chosenVectorImage = image || '';
+    }
+    setImageUrl(displayImage);
+    setVectorImage(chosenVectorImage);
     setFromCamera(!!fc);
     setSourcePath(sp || '');
     setIsUnknownObject(false);
@@ -257,10 +268,10 @@ const CandidateShow = () => {
     setBrandData([]);
     setSelectedIndex(0);
 
-    if (cookieDt === 'drug' && image) {
+    if ((cookieDt === 'drug' && chosenVectorImage ) || (cookieDt === 'packagedrug' && chosenVectorImage)) {
       (async () => {
         try {
-          const payload = await convertImgRefToVector(image);
+          const payload = await convertImgRefToVector(chosenVectorImage);
           console.log(payload);
           const imgRefVector = payload?.vector_base64;
           if (imgRefVector) {
