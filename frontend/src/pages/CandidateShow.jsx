@@ -240,9 +240,10 @@ const CandidateShow = () => {
 
   const [candidates, setCandidates] = useState([]);
   const [detectionType, setDetectionType] = useState('');
+  const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
   const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
   const cookieDt = (readCookie('detectionType') || '').toLowerCase();
-  console.log(cookieDt);
+  // cookieDt ใช้ในการตรวจสอบประเภทการตรวจจับ
 
   useEffect(() => {
     if (!location.state) return;
@@ -272,20 +273,23 @@ const CandidateShow = () => {
       (async () => {
         try {
           const payload = await convertImgRefToVector(chosenVectorImage);
-          console.log(payload);
           const imgRefVector = payload?.vector_base64;
           if (imgRefVector) {
             try {
               const similarResults = await narcoticApiService.findSimilarNarcoticsWithBase64(imgRefVector);
-              console.log('findSimilarNarcoticsWithBase64 results:', similarResults);
+              const narcoticIds = Array.isArray(similarResults)
+                ? similarResults.map(r => r?.narcotic_id).filter(id => id !== undefined && id !== null)
+                : [];
+              setSimilarNarcoticIds(narcoticIds);
+              console.log(narcoticIds);
             } catch (apiErr) {
-              console.warn('findSimilarNarcoticsWithBase64 failed:', apiErr);
+              setSimilarNarcoticIds([]);
             }
           } else {
-            console.warn('No imgRefVector returned from convertImgRefToVector');
+            setSimilarNarcoticIds([]);
           }
         } catch (err) {
-          console.warn('convertImgRefToVector (from cookie) failed:', err);
+          setSimilarNarcoticIds([]);
         }
       })();
     }

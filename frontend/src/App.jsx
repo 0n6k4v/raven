@@ -56,7 +56,6 @@ const App = memo(function App() {
         >
           {/* Narcotics Admin */}
           <Route path='/admin/narcotics/catalog-management' element={<AdminNarcoticCatalog />} />
-          <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
 
           {/* History */}
           <Route path='/history' element={<History />} />
@@ -71,6 +70,9 @@ const App = memo(function App() {
         >
           {/* Evidence Profile */}
           {/* <Route path='/evidenceProfile' element={<EvidenceProfile />} /> */}
+
+          {/* Narcotics Admin */}
+          <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
 
           {/* History */}
           <Route path='/history/detail' element={<EvidenceHistoryProfile />} />

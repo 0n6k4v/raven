@@ -15,13 +15,8 @@ const pillTypes = ['เม็ด', 'เม็ดยา', 'ยาเม็ด', '
 const packageTypes = ['หีบห่อ', 'ซอง', 'บรรจุภัณฑ์', 'แพคเกจ'];
 
 // ==================== UTILS ====================
-const isPillForm = (evidenceType) => {
-    return pillTypes.includes(evidenceType);
-};
-
-const isPackageForm = (evidenceType) => {
-    return packageTypes.includes(evidenceType);
-};
+const isPillForm = (evidenceType) => pillTypes.includes(evidenceType);
+const isPackageForm = (evidenceType) => packageTypes.includes(evidenceType);
 
 const parseBase64String = (input) => {
   if (!input) return null;
@@ -41,107 +36,56 @@ const base64ToFile = (base64, filename = 'image.jpg', mime = 'image/jpeg') => {
   return new File([u8], filename, { type: mime });
 };
 
-const CreateExhibit = async (exhibitPayload) => {
-  const res = await fetch(`${BASE_URL}/exhibits`, {
-    method: 'POST',
-    credentials: 'include',
+const parseJsonIfAny = async (res) => {
+  const ct = res.headers.get('Content-Type') || '';
+  const data = ct.includes('application/json') ? await res.json() : null;
+  if (!res.ok) {
+    const err = new Error('API error');
+    err.response = { status: res.status, data };
+    throw err;
+  }
+  return data;
+};
+
+// ==================== API HELPERS (kept local for now) ====================
+const CreateExhibit = async (exhibitPayload) =>
+  parseJsonIfAny(await fetch(`${BASE_URL}/exhibits`, {
+    method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(exhibitPayload)
-  });
+  }));
 
-  const contentType = res.headers.get('Content-Type') || '';
-  const data = contentType.includes('application/json') ? await res.json() : null;
-
-  if (!res.ok) {
-    const err = new Error('Failed to create exhibit');
-    err.response = { status: res.status, data };
-    throw err;
-  }
-
-  return data;
-};
-
-const CreateNarcotic = async (narcoticPayload) => {
-  const res = await fetch(`${BASE_URL}/narcotic`, {
-    method: 'POST',
-    credentials: 'include',
+const CreateNarcotic = async (narcoticPayload) =>
+  parseJsonIfAny(await fetch(`${BASE_URL}/narcotic`, {
+    method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(narcoticPayload)
-  });
+  }));
 
-  const contentType = res.headers.get('Content-Type') || '';
-  const data = contentType.includes('application/json') ? await res.json() : null;
-
-  if (!res.ok) {
-    const err = new Error('Failed to create narcotic');
-    err.response = { status: res.status, data };
-    throw err;
-  }
-
-  return data;
-};
-
-const CreatePill = async (pillPayload) => {
-  const res = await fetch(`${BASE_URL}/narcotics/pill`, {
-    method: 'POST',
-    credentials: 'include',
+const CreatePill = async (pillPayload) =>
+  parseJsonIfAny(await fetch(`${BASE_URL}/narcotics/pill`, {
+    method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(pillPayload)
-  });
+  }));
 
-  const contentType = res.headers.get('Content-Type') || '';
-  const data = contentType.includes('application/json') ? await res.json() : null;
-
-  if (!res.ok) {
-    const err = new Error('Failed to create pill info');
-    err.response = { status: res.status, data };
-    throw err;
-  }
-
-  return data;
-};
-
-const UploadNarcoticImage = async ({
-  exhibitId,
-  narcoticId,
-  file,
-  description = '',
-  priority = 0,
-  image_type = 'example'
-}) => {
+const UploadNarcoticImage = async ({ exhibitId, narcoticId, file, description = '', priority = 0, image_type = 'example' }) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('description', description);
   formData.append('priority', String(priority));
   formData.append('image_type', image_type);
-
-  const res = await fetch(`${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData
-  });
-
-  const contentType = res.headers.get('Content-Type') || '';
-  const data = contentType.includes('application/json') ? await res.json() : null;
-
-  if (!res.ok) {
-    const err = new Error('Failed to upload narcotic image');
-    err.response = { status: res.status, data };
-    throw err;
-  }
-
-  return data;
+  return parseJsonIfAny(await fetch(`${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`, {
+    method: 'POST', credentials: 'include', body: formData
+  }));
 };
 
 const CreateImageVector = async ({ file, narcoticId, imageId }) => {
   try {
     const classifyForm = new FormData();
     classifyForm.append('image', file);
-
     const classifyRes = await fetch(`${BASE_URL}/object-classify`, {
-      method: 'POST',
-      credentials: 'include',
-      body: classifyForm
+      method: 'POST', credentials: 'include', body: classifyForm
     });
 
     const classifyContentType = classifyRes.headers.get('Content-Type') || '';
@@ -154,8 +98,7 @@ const CreateImageVector = async ({ file, narcoticId, imageId }) => {
       croppedBase64 =
         classifyData?.objects?.[0]?.cropped_base64 ??
         classifyData?.objects?.find(o => o.cropped_base64)?.cropped_base64 ??
-        classifyData?.cropped_base64 ??
-        null;
+        classifyData?.cropped_base64 ?? null;
       if (croppedBase64) {
         const parsed = parseBase64String(croppedBase64);
         croppedFileForVector = base64ToFile(parsed.base64, `cropped_${imageId || 'img'}.jpg`, parsed.mime);
@@ -169,37 +112,27 @@ const CreateImageVector = async ({ file, narcoticId, imageId }) => {
     }
 
     let convertResult = null;
-    try {
-      if (croppedFileForVector) {
-        const convertForm = new FormData();
-        convertForm.append('image', croppedFileForVector, croppedFileForVector.name);
-
-        const convertRes = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, {
-          method: 'POST',
-          credentials: 'include',
-          body: convertForm
-        });
-
-        const convertContentType = convertRes.headers.get('Content-Type') || '';
-        convertResult = convertContentType.includes('application/json') ? await convertRes.json() : await convertRes.text();
-      }
-    } catch (convErr) {
-      throw convErr;
+    if (croppedFileForVector) {
+      const convertForm = new FormData();
+      convertForm.append('image', croppedFileForVector, croppedFileForVector.name);
+      const convertRes = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, {
+        method: 'POST', credentials: 'include', body: convertForm
+      });
+      const convertContentType = convertRes.headers.get('Content-Type') || '';
+      convertResult = convertContentType.includes('application/json') ? await convertRes.json() : await convertRes.text();
     }
 
     let vectorPayloadList = null;
     if (convertResult) {
       const vb = convertResult.vector_base64;
-      if (Array.isArray(vb) && vb.length > 0) {
-        vectorPayloadList = vb.map(v => Number(v));
-      } else if (typeof vb === 'string' && vb.length > 0) {
+      if (Array.isArray(vb) && vb.length > 0) vectorPayloadList = vb.map(v => Number(v));
+      else if (typeof vb === 'string' && vb.length > 0) {
         try {
           const b64 = vb.includes(',') ? vb.split(',')[1] : vb;
           const binaryStr = atob(b64);
           const len = binaryStr.length;
           const bytes = new Uint8Array(len);
           for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i);
-
           const floatArray = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
           vectorPayloadList = Array.from(floatArray);
         } catch (decodeErr) {
@@ -210,22 +143,14 @@ const CreateImageVector = async ({ file, narcoticId, imageId }) => {
 
     let savedVectorResponse = null;
     if (vectorPayloadList && vectorPayloadList.length > 0) {
-      const saveBody = {
-        narcotic_id: narcoticId,
-        image_id: imageId,
-        vector_data: vectorPayloadList,
-      };
-
+      const saveBody = { narcotic_id: narcoticId, image_id: imageId, vector_data: vectorPayloadList };
       const saveRes = await fetch(`${BASE_URL}/narcotics/images/vector/save`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(saveBody)
       });
-
       const saveContentType = saveRes.headers.get('Content-Type') || '';
       savedVectorResponse = saveContentType.includes('application/json') ? await saveRes.json() : await saveRes.text();
-
       if (!saveRes.ok) {
         const err = new Error('Failed to save image vector on backend');
         err.response = { status: saveRes.status, data: savedVectorResponse };
@@ -335,11 +260,7 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      // create exhibit
-      const exhibitData = await CreateExhibit({
-        category: 'ยาเสพติด',
-        subcategory: formData.drugType || ''
-      });
+      const exhibitData = await CreateExhibit({ category: 'ยาเสพติด', subcategory: formData.drugType || '' });
       if (!exhibitData?.id) {
         const err = new Error('ไม่สามารถสร้างรายการยาเสพติดได้');
         err.response = { status: 422, data: exhibitData };
@@ -347,7 +268,6 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
       }
       const exhibitId = exhibitData.id;
 
-      // create narcotic
       const narcoticPayload = {
         exhibit_id: exhibitId,
         form_id: parseInt(formData.formId) || '',
@@ -359,7 +279,6 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
         weight_grams: formData.weightGrams ? parseFloat(formData.weightGrams) : null
       };
 
-      // create narcotic
       const narcoticData = await CreateNarcotic(narcoticPayload);
       if (!narcoticData?.id) {
         const err = new Error('ไม่สามารถบันทึกข้อมูลยาเสพติดได้');
@@ -368,7 +287,6 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
       }
       const narcoticId = narcoticData.id;
 
-      // pill details if needed
       if (isPillForm(evidenceType)) {
         const pillBody = {
           narcotic_id: narcoticId,
@@ -380,13 +298,11 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
           edge_width_mm: pillData.edge_width_mm ? parseFloat(pillData.edge_width_mm) : null,
           weight_mg: pillData.weight_mg ? parseFloat(pillData.weight_mg) : null
         };
-
         await CreatePill(pillBody);
       }
 
       if (Array.isArray(actualImages) && actualImages.length > 0) {
         const uploadAndVectorPromises = actualImages.map(async (file, i) => {
-          // 1) upload image
           const uploadResp = await UploadNarcoticImage({
             exhibitId,
             narcoticId,
@@ -396,7 +312,6 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
             image_type: 'example'
           });
 
-          // 2) extract uploaded image id (support common shapes)
           const imageId = uploadResp?.data?.id ?? uploadResp?.id ?? null;
           if (!imageId) {
             const err = new Error('ไม่มี image id จากการอัปโหลด');
@@ -404,13 +319,7 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
             throw err;
           }
 
-          // 3) create vector from cropped/classified image (must succeed)
-          const vectorResult = await CreateImageVector({
-            file,
-            narcoticId,
-            imageId
-          });
-
+          const vectorResult = await CreateImageVector({ file, narcoticId, imageId });
           return { upload: uploadResp, vector: vectorResult };
         });
 
@@ -419,11 +328,7 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
 
       setSubmitSuccess(true);
       setTimeout(() => {
-        try {
-          navigate('/admin/narcotics/catalog-management');
-        } catch (navErr) {
-          // navigation failure intentionally not logged
-        }
+        try { navigate('/admin/narcotics/catalog-management'); } catch { /* intentionally silent */ }
       }, 1200);
     } catch (error) {
       if (error?.response) {
@@ -448,163 +353,118 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
   return { handleSubmit, isSubmitting, submitSuccess, submitError, setSubmitError };
 };
 
+// ==================== PRESENTATIONAL SUBCOMPONENTS (kept here for readability) ====================
+const Header = React.memo(({ onBack }) => (
+  <div className="flex items-center justify-between w-full py-4 pl-4">
+    <div className="flex items-center">
+      <button type="button" className="flex items-center text-[#990000] font-medium" onClick={onBack}>
+        <ChevronLeft className="h-5 w-5 mr-1" />
+        ย้อนกลับ
+      </button>
+    </div>
+  </div>
+));
+
+const SuccessModal = React.memo(() => (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="bg-white p-6 rounded-lg shadow-xl">
+      <div className="text-center">
+        <div className="text-green-500 text-5xl mb-4">✓</div>
+        <h2 className="text-xl font-bold mb-2">บันทึกข้อมูลสำเร็จ</h2>
+        <p className="text-gray-600">กำลังนำคุณไปยังหน้าแสดงรายการยาเสพติด...</p>
+      </div>
+    </div>
+  </div>
+));
+
+const ErrorAlert = React.memo(({ message, onClose }) => (
+  <div className="px-6 mb-4">
+    <div className="mt-3 px-4 py-3 bg-red-50 border border-red-300 text-red-800 rounded-md" role="alert" aria-live="assertive">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <strong className="font-semibold">เกิดข้อผิดพลาด!</strong>
+          <span className="block sm:inline ml-2">{message}</span>
+        </div>
+        <button type="button" onClick={onClose} aria-label="ปิดข้อความผิดพลาด" className="ml-4 text-red-800 p-1 flex items-center justify-center">
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  </div>
+));
+
+const BottomBar = React.memo(({ onCancel, submitting }) => (
+  <div className="w-full py-4 px-4 flex justify-end border-t border-gray-200 space-x-4 bg-white">
+    <button type="button" onClick={onCancel} disabled={submitting} className="w-32 py-2 border border-gray-200 rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-60">
+      ยกเลิก
+    </button>
+    <button type="submit" disabled={submitting} className={`w-32 py-2 bg-[#990000] rounded-lg text-white shadow-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#7a0000] ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+      {submitting ? 'กำลังบันทึก...' : 'บันทึก'}
+    </button>
+  </div>
+));
+
 // ==================== MAIN COMPONENT ====================
 function CreateNarcoticCatalog() {
-    const navigate = useNavigate();
-    const [evidenceType, setEvidenceType] = useState("");
-    const [formData, setFormData] = useState({
-        drugType: "",
-        drugCategory: "",
-        characteristics: "",
-        consumptionMethod: "",
-        effect: "",
-        weightGrams: "",
-        formId: ""
-    });
-    const [pillData, setPillData] = useState({
-        color: "",
-        diameter_mm: "",
-        thickness_mm: "",
-        edge_shape: "",
-        characteristics: "",
-        edge_width_mm: "",
-        weight_mg: ""
-    });
-    const [packageData, setPackageData] = useState({
-        packageType: "",
-        packageMaterial: "",
-        packageColor: ""
-    });
+  const navigate = useNavigate();
+  const [evidenceType, setEvidenceType] = useState('');
+  const [formData, setFormData] = useState({
+    drugType: '', drugCategory: '', characteristics: '', consumptionMethod: '', effect: '', weightGrams: '', formId: ''
+  });
+  const [pillData, setPillData] = useState({
+    color: '', diameter_mm: '', thickness_mm: '', edge_shape: '', characteristics: '', edge_width_mm: '', weight_mg: ''
+  });
+  const [packageData, setPackageData] = useState({ packageType: '', packageMaterial: '', packageColor: '' });
 
-    const { drugForms, isLoadingDrugForms } = useDrugForms();
-    const {
-      images, setImages,
-      actualImages, setActualImages,
-      selectedThumb, setSelectedThumb,
-      handleImageUpload, handleRemoveImage, handleDragEnd
-    } = useImageHandlers();
+  const { drugForms, isLoadingDrugForms } = useDrugForms();
+  const {
+    images, setImages, actualImages, setActualImages, selectedThumb, setSelectedThumb,
+    handleImageUpload, handleRemoveImage, handleDragEnd
+  } = useImageHandlers();
 
-    const { handleSubmit, isSubmitting, submitSuccess, submitError, setSubmitError } =
-      useNarcoticSubmit({ formData, pillData, evidenceType, actualImages, navigate });
+  const { handleSubmit, isSubmitting, submitSuccess, submitError, setSubmitError } =
+    useNarcoticSubmit({ formData, pillData, evidenceType, actualImages, navigate });
 
-    const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(useSensor(PointerSensor));
+  const handleGoBack = useCallback(() => navigate(-1), [navigate]);
 
-    const handleGoBack = useCallback(() => navigate(-1), [navigate]);
+  const drugFormProps = useMemo(() => ({
+    formData, setFormData, evidenceType, setEvidenceType, drugForms, isLoadingDrugForms
+  }), [formData, evidenceType, drugForms, isLoadingDrugForms]);
 
-    const drugFormProps = useMemo(() => ({
-        formData, setFormData, evidenceType, setEvidenceType, drugForms, isLoadingDrugForms
-    }), [formData, evidenceType, drugForms, isLoadingDrugForms]);
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col w-full h-full bg-gray-100 shadow-sm overflow-hidden" aria-live="polite">
+      <Header onBack={handleGoBack} />
 
-    return (
-        <form onSubmit={handleSubmit} className="flex flex-col w-full h-full bg-gray-100 shadow-sm overflow-hidden" aria-live="polite">
-            {/* Header with back button */}
-            <div className="flex items-center justify-between w-full py-4 pl-4">
-                <div className="flex items-center">
-                    <button type="button" className="flex items-center text-[#990000] font-medium" onClick={handleGoBack}>
-                        <ChevronLeft className="h-5 w-5 mr-1" />
-                        ย้อนกลับ
-                    </button>
-                </div>
-            </div>
-            
-            {/* Page Title */}
-            <div className="flex items-center justify-between w-full px-6">
-                <h1 className="text-xl font-bold mb-4">เพิ่มยาเสพติด</h1>
-            </div>
+      <div className="flex items-center justify-between w-full px-6">
+        <h1 className="text-xl font-bold mb-4">เพิ่มยาเสพติด</h1>
+      </div>
 
-            {/* Content area with scroll */}
-            <main className="flex-1 overflow-auto">
-                <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-12 gap-6">
-                    {/* Left Column - Adjusted to be more balanced */}
-                    <div className="md:col-span-7 lg:col-span-8 space-y-6">
-                        {/* Drug Form Section */}
-                        <DrugFormSection {...drugFormProps} />
+      <main className="flex-1 overflow-auto">
+        <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="md:col-span-7 lg:col-span-8 space-y-6">
+            <DrugFormSection {...drugFormProps} />
+            {isPillForm(evidenceType) && <PillCharacteristicsForm pillData={pillData} setPillData={setPillData} />}
+            {isPackageForm(evidenceType) && <PackageCharacteristicsForm packageData={packageData} setPackageData={setPackageData} />}
+            {evidenceType && <AdditionalInfoForm formData={formData} setFormData={setFormData} />}
+          </div>
 
-                        {/* Pill Characteristics Form */}
-                        {isPillForm(evidenceType) && <PillCharacteristicsForm pillData={pillData} setPillData={setPillData} />}
+          <aside className="md:col-span-5 lg:col-span-4">
+            <ImageUploadSection
+              images={images} setImages={setImages} selectedThumb={selectedThumb} setSelectedThumb={setSelectedThumb}
+              handleImageUpload={handleImageUpload} handleRemoveImage={handleRemoveImage} handleDragEnd={handleDragEnd}
+              sensors={sensors}
+            />
+          </aside>
+        </div>
+      </main>
 
-                        {/* Package Characteristics Form */}
-                        {isPackageForm(evidenceType) && <PackageCharacteristicsForm packageData={packageData} setPackageData={setPackageData} />}
+      {submitSuccess && <SuccessModal />}
+      {submitError && <ErrorAlert message={submitError} onClose={() => setSubmitError(null)} />}
 
-                        {/* Additional Information Form */}
-                        {evidenceType && <AdditionalInfoForm formData={formData} setFormData={setFormData} />}
-                    </div>
-
-                    {/* Right Column */}
-                    <aside className="md:col-span-5 lg:col-span-4">
-                        <ImageUploadSection
-                            images={images}
-                            setImages={setImages}
-                            selectedThumb={selectedThumb}
-                            setSelectedThumb={setSelectedThumb}
-                            handleImageUpload={handleImageUpload}
-                            handleRemoveImage={handleRemoveImage}
-                            handleDragEnd={handleDragEnd}
-                            sensors={sensors}
-                        />
-                    </aside>
-                </div>
-            </main>
-
-            {/* Success Message */}
-            {submitSuccess && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl">
-                        <div className="text-center">
-                            <div className="text-green-500 text-5xl mb-4">✓</div>
-                            <h2 className="text-xl font-bold mb-2">บันทึกข้อมูลสำเร็จ</h2>
-                            <p className="text-gray-600">กำลังนำคุณไปยังหน้าแสดงรายการยาเสพติด...</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Inline error alert placed above bottom action bar (not fixed) */}
-            {submitError && (
-              <div className="px-6 mb-4">
-                <div
-                  className="mt-3 px-4 py-3 bg-red-50 border border-red-300 text-red-800 rounded-md"
-                  role="alert"
-                  aria-live="assertive"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <strong className="font-semibold">เกิดข้อผิดพลาด!</strong>
-                      <span className="block sm:inline ml-2">{submitError}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSubmitError(null)}
-                      aria-label="ปิดข้อความผิดพลาด"
-                      className="ml-4 text-red-800 p-1 flex items-center justify-center"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fixed Bottom Bar */}
-            <div className="w-full py-4 px-4 flex justify-end border-t border-gray-200 space-x-4 bg-white">
-                <button
-                    type="button"
-                    onClick={handleGoBack}
-                    disabled={isSubmitting}
-                    className="w-32 py-2 border border-gray-200 rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-60"
-                >
-                    ยกเลิก
-                </button>
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-32 py-2 bg-[#990000] rounded-lg text-white shadow-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#7a0000] ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                    {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
-            </div>
-        </form>
-    );
+      <BottomBar onCancel={handleGoBack} submitting={isSubmitting} />
+    </form>
+  );
 }
 
 export default CreateNarcoticCatalog;
