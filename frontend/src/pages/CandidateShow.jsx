@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react';
 import { PiImageBroken } from 'react-icons/pi';
@@ -6,7 +6,6 @@ import { IoClose } from 'react-icons/io5';
 import { readCookie } from '../utils/cookies';
 import { NarcoticApiService } from '../services/api/narcoticApiService';
 // import { fetchGunReferenceImages, getGunReferenceImage } from '../../services/gunReferenceService';
-// import { fetchNarcoticById } from '../../services/narcoticReferenceService';
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -243,7 +242,6 @@ const CandidateShow = () => {
   const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
   const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
   const cookieDt = (readCookie('detectionType') || '').toLowerCase();
-  // cookieDt ใช้ในการตรวจสอบประเภทการตรวจจับ
 
   useEffect(() => {
     if (!location.state) return;
@@ -281,7 +279,62 @@ const CandidateShow = () => {
                 ? similarResults.map(r => r?.narcotic_id).filter(id => id !== undefined && id !== null)
                 : [];
               setSimilarNarcoticIds(narcoticIds);
-              console.log(narcoticIds);
+
+              const narcoticSimilarity = Array.isArray(similarResults)
+                ? similarResults.map(r => ({
+                    narcotic_id: r?.narcotic_id ?? null,
+                    similarity: (typeof r?.similarity === 'number') ? r.similarity : (Number(r?.similarity) || 0)
+                  }))
+                : [];
+              
+              let narcoticDetails = [];
+              if (narcoticIds.length > 0) {
+                try {
+                  narcoticDetails = await Promise.all(
+                    narcoticIds.map(id => narcoticApiService.fetchNarcoticById(id).catch(() => null))
+                  );
+                } catch {
+                  narcoticDetails = [];
+                }
+              }
+
+              console.log(narcoticDetails);
+
+              // สร้าง map ของ similarity จากผลการค้นหา (ถ้ามี) เพื่อรวมกับรายละเอียด
+              const similarityMap = new Map();
+              if (Array.isArray(similarResults)) {
+                similarResults.forEach(r => {
+                  if (r?.narcotic_id != null) similarityMap.set(r.narcotic_id, r.similarity ?? 0);
+                });
+              }
+
+              // แปลงรายละเอียดเป็น object สำหรับแสดงผล (candidate)
+              const formattedCandidates = (narcoticDetails || []).filter(Boolean).map(detail => ({
+                label: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
+                displayName: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
+                confidence: similarityMap.get(detail.id) ?? 0,
+                narcotic_id: detail.id,
+                drug_type: detail.drug_type || '',
+                drug_category: detail.drug_category || '',
+                characteristics: detail.characteristics || '',
+                similarity: similarityMap.get(detail.id) ?? 0,
+                example_images: detail.example_images[0].image_url || [],
+              }));
+
+              // เพิ่มตัวเลือก "ไม่ทราบชนิด" เหมือนเดิม เพื่อให้ผู้ใช้เลือกได้
+              formattedCandidates.push({
+                label: 'ยาเสพติดประเภทไม่ทราบชนิด',
+                displayName: 'ยาเสพติดประเภทไม่ทราบชนิด',
+                confidence: 0,
+                isUnknownDrug: true,
+                characteristics: 'ไม่ทราบอัตลักษณ์',
+                exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_DRUG,
+                drug_type: 'ไม่ทราบชนิด',
+                drug_category: 'ไม่ทราบประเภท'
+              });
+
+              setDetectionType('Drug');
+              setCandidates(formattedCandidates);
             } catch (apiErr) {
               setSimilarNarcoticIds([]);
             }
@@ -294,6 +347,7 @@ const CandidateShow = () => {
       })();
     }
 
+    /* LEGACY LOGIC COMMENTED OUT
     const dt = ('').toString().toLowerCase();
 
     if (dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) {
@@ -405,6 +459,7 @@ const CandidateShow = () => {
       isUnknown: true,
       exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_OBJECT
     }]);
+    */
   }, [location.state]);
 
   const handleGoBack = useCallback(() => {
@@ -569,8 +624,6 @@ const CandidateShow = () => {
           </div>
         ) : detectionType === 'Gun' ? (
           <>
-            {/* Gun UI temporarily disabled to avoid runtime errors from undefined imports/hooks.
-                Restore this block when getModelImage/isLoadingImages/GunBrandPanel are available. */}
             <div className="p-4 text-center text-gray-500">
               ฟีเจอร์แสดงผลอาวุธปืนถูกปิดชั่วคราว (disabled)
             </div>
@@ -579,6 +632,8 @@ const CandidateShow = () => {
           <div className={`space-y-3`}>
             {candidates.length > 0 ? (
               candidates.map((candidate, index) => {
+                console.log(candidate);
+                
                 const narcoticDetail = null;
                 return (
                   <div
@@ -589,7 +644,7 @@ const CandidateShow = () => {
                     {(candidate.narcotic_id && narcoticDetail && narcoticDetail.example_images && narcoticDetail.example_images.length > 0) ? (
                       <div className="mr-3 flex-shrink-0">
                         <img
-                          src={narcoticDetail.example_images[0].image_url}
+                          src={candidate.example_images}
                           alt={narcoticDetail.drug_type || candidate.label}
                           className="w-16 h-16 object-contain rounded-lg border border-gray-300"
                           onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}

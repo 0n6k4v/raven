@@ -31,6 +31,30 @@ class NarcoticApiService {
       throw error;
     }
   }
+
+  async fetchNarcoticById(id) {
+    try {
+      if (!id) {
+        throw new Error('Invalid narcotic id');
+      }
+
+      const res = await fetch(`${this.baseUrl}/narcotics/${encodeURIComponent(id)}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching narcotic by ID:', error);
+      throw error;
+    }
+  }
 }
 
 export { NarcoticApiService };

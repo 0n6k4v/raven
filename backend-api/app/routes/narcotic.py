@@ -104,6 +104,19 @@ async def read_narcotics(
     
     return narcotics
 
+@router.get("/narcotics/{narcotic_id}", response_model=NarcoticWithRelations)
+async def read_narcotic(
+    narcotic_id: int, 
+    db: AsyncSession = Depends(get_async_db)
+):
+    narcotic_controller = NarcoticController(db)
+    narcotic = await narcotic_controller.get_narcotic_with_relations(narcotic_id)
+    
+    if not narcotic:
+        raise HTTPException(status_code=404, detail="Narcotic not found")
+        
+    return narcotic
+
 @router.post("/search-vector", response_model=Dict[str, List[Dict[str, Any]]])
 async def search_similar_narcotics(
     vector: List[float] = Body(None),
