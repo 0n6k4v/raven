@@ -9,16 +9,235 @@ import PackageCharacteristicsForm from '../../../components/Admin/NarcoticAdmin/
 import AdditionalInfoForm from '../../../components/Admin/NarcoticAdmin/CreateNarcotic/AdditionalInfoForm.jsx';
 import ImageUploadSection from '../../../components/Admin/NarcoticAdmin/CreateNarcotic/ImageUploadSection.jsx';
 
+// ==================== CONSTANTS ====================
+const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+const pillTypes = ['เม็ด', 'เม็ดยา', 'ยาเม็ด', 'แคปซูล', 'ยาแคปซูล'];
+const packageTypes = ['หีบห่อ', 'ซอง', 'บรรจุภัณฑ์', 'แพคเกจ'];
+
 // ==================== UTILS ====================
 const isPillForm = (evidenceType) => {
-    const pillTypes = ['เม็ด', 'เม็ดยา', 'ยาเม็ด', 'แคปซูล', 'ยาแคปซูล'];
     return pillTypes.includes(evidenceType);
 };
+
 const isPackageForm = (evidenceType) => {
-    const packageTypes = ['หีบห่อ', 'ซอง', 'บรรจุภัณฑ์', 'แพคเกจ'];
     return packageTypes.includes(evidenceType);
 };
-const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+
+const parseBase64String = (input) => {
+  if (!input) return null;
+  if (input.startsWith('data:')) {
+    const [meta, b64] = input.split(',', 2);
+    const mime = meta.match(/data:(.*);base64/)?.[1] || 'image/jpeg';
+    return { mime, base64: b64 };
+  }
+  return { mime: 'image/jpeg', base64: input };
+};
+
+const base64ToFile = (base64, filename = 'image.jpg', mime = 'image/jpeg') => {
+  const binary = atob(base64);
+  const len = binary.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+  return new File([u8], filename, { type: mime });
+};
+
+const CreateExhibit = async (exhibitPayload) => {
+  const res = await fetch(`${BASE_URL}/exhibits`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(exhibitPayload)
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const data = contentType.includes('application/json') ? await res.json() : null;
+
+  if (!res.ok) {
+    const err = new Error('Failed to create exhibit');
+    err.response = { status: res.status, data };
+    throw err;
+  }
+
+  return data;
+};
+
+const CreateNarcotic = async (narcoticPayload) => {
+  const res = await fetch(`${BASE_URL}/narcotic`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(narcoticPayload)
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const data = contentType.includes('application/json') ? await res.json() : null;
+
+  if (!res.ok) {
+    const err = new Error('Failed to create narcotic');
+    err.response = { status: res.status, data };
+    throw err;
+  }
+
+  return data;
+};
+
+const CreatePill = async (pillPayload) => {
+  const res = await fetch(`${BASE_URL}/narcotics/pill`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pillPayload)
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const data = contentType.includes('application/json') ? await res.json() : null;
+
+  if (!res.ok) {
+    const err = new Error('Failed to create pill info');
+    err.response = { status: res.status, data };
+    throw err;
+  }
+
+  return data;
+};
+
+const UploadNarcoticImage = async ({
+  exhibitId,
+  narcoticId,
+  file,
+  description = '',
+  priority = 0,
+  image_type = 'example'
+}) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('description', description);
+  formData.append('priority', String(priority));
+  formData.append('image_type', image_type);
+
+  const res = await fetch(`${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const data = contentType.includes('application/json') ? await res.json() : null;
+
+  if (!res.ok) {
+    const err = new Error('Failed to upload narcotic image');
+    err.response = { status: res.status, data };
+    throw err;
+  }
+
+  return data;
+};
+
+const CreateImageVector = async ({ file, narcoticId, imageId }) => {
+  try {
+    const classifyForm = new FormData();
+    classifyForm.append('image', file);
+
+    const classifyRes = await fetch(`${BASE_URL}/object-classify`, {
+      method: 'POST',
+      credentials: 'include',
+      body: classifyForm
+    });
+
+    const classifyContentType = classifyRes.headers.get('Content-Type') || '';
+    let classifyData = null;
+    let croppedBase64 = null;
+    let croppedFileForVector = null;
+
+    if (classifyContentType.includes('application/json')) {
+      classifyData = await classifyRes.json();
+      croppedBase64 =
+        classifyData?.objects?.[0]?.cropped_base64 ??
+        classifyData?.objects?.find(o => o.cropped_base64)?.cropped_base64 ??
+        classifyData?.cropped_base64 ??
+        null;
+      if (croppedBase64) {
+        const parsed = parseBase64String(croppedBase64);
+        croppedFileForVector = base64ToFile(parsed.base64, `cropped_${imageId || 'img'}.jpg`, parsed.mime);
+      }
+    } else if (classifyContentType.startsWith('image/')) {
+      const blob = await classifyRes.blob();
+      const mime = blob.type || 'image/jpeg';
+      const filename = `cropped_${imageId || 'img'}.jpg`;
+      croppedFileForVector = new File([blob], filename, { type: mime });
+      classifyData = { cropped: true, mime };
+    }
+
+    let convertResult = null;
+    try {
+      if (croppedFileForVector) {
+        const convertForm = new FormData();
+        convertForm.append('image', croppedFileForVector, croppedFileForVector.name);
+
+        const convertRes = await fetch(`${BASE_URL}/convert_image_ref_to_vector`, {
+          method: 'POST',
+          credentials: 'include',
+          body: convertForm
+        });
+
+        const convertContentType = convertRes.headers.get('Content-Type') || '';
+        convertResult = convertContentType.includes('application/json') ? await convertRes.json() : await convertRes.text();
+      }
+    } catch (convErr) {
+      throw convErr;
+    }
+
+    let vectorPayloadList = null;
+    if (convertResult) {
+      const vb = convertResult.vector_base64;
+      if (Array.isArray(vb) && vb.length > 0) {
+        vectorPayloadList = vb.map(v => Number(v));
+      } else if (typeof vb === 'string' && vb.length > 0) {
+        try {
+          const b64 = vb.includes(',') ? vb.split(',')[1] : vb;
+          const binaryStr = atob(b64);
+          const len = binaryStr.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+          const floatArray = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
+          vectorPayloadList = Array.from(floatArray);
+        } catch (decodeErr) {
+          vectorPayloadList = null;
+        }
+      }
+    }
+
+    let savedVectorResponse = null;
+    if (vectorPayloadList && vectorPayloadList.length > 0) {
+      const saveBody = {
+        narcotic_id: narcoticId,
+        image_id: imageId,
+        vector_data: vectorPayloadList,
+      };
+
+      const saveRes = await fetch(`${BASE_URL}/narcotics/images/vector/save`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveBody)
+      });
+
+      const saveContentType = saveRes.headers.get('Content-Type') || '';
+      savedVectorResponse = saveContentType.includes('application/json') ? await saveRes.json() : await saveRes.text();
+
+      if (!saveRes.ok) {
+        const err = new Error('Failed to save image vector on backend');
+        err.response = { status: saveRes.status, data: savedVectorResponse };
+        throw err;
+      }
+    }
+
+    return { classify: classifyData, convert: convertResult, saved: savedVectorResponse };
+  } catch (err) {
+    throw err;
+  }
+};
 
 // ==================== CUSTOM HOOKS ====================
 const useDrugForms = () => {
@@ -39,7 +258,6 @@ const useDrugForms = () => {
       }
       setDrugForms(data || []);
     } catch (err) {
-      console.error('Error fetching drug forms:', err);
       setError(err);
     } finally {
       setIsLoadingDrugForms(false);
@@ -112,28 +330,19 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const safeJson = async (res) => {
-    const ct = res.headers.get('Content-Type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return null;
-  };
-
   const handleSubmit = useCallback(async (e) => {
     e?.preventDefault();
     setSubmitError(null);
     setIsSubmitting(true);
     try {
       // create exhibit
-      const exhibitRes = await fetch(`${BASE_URL}/exhibits`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exhibit: { category: 'ยาเสพติด', subcategory: formData.drugType || '' } })
+      const exhibitData = await CreateExhibit({
+        category: 'ยาเสพติด',
+        subcategory: formData.drugType || ''
       });
-      const exhibitData = await safeJson(exhibitRes);
-      if (!exhibitRes.ok || !exhibitData?.id) {
+      if (!exhibitData?.id) {
         const err = new Error('ไม่สามารถสร้างรายการยาเสพติดได้');
-        err.response = { status: exhibitRes.status, data: exhibitData };
+        err.response = { status: 422, data: exhibitData };
         throw err;
       }
       const exhibitId = exhibitData.id;
@@ -150,16 +359,11 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
         weight_grams: formData.weightGrams ? parseFloat(formData.weightGrams) : null
       };
 
-      const narcoticRes = await fetch(`${BASE_URL}/narcotic`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(narcoticPayload)
-      });
-      const narcoticData = await safeJson(narcoticRes);
-      if (!narcoticRes.ok || !narcoticData?.id) {
+      // create narcotic
+      const narcoticData = await CreateNarcotic(narcoticPayload);
+      if (!narcoticData?.id) {
         const err = new Error('ไม่สามารถบันทึกข้อมูลยาเสพติดได้');
-        err.response = { status: narcoticRes.status, data: narcoticData };
+        err.response = { status: 422, data: narcoticData };
         throw err;
       }
       const narcoticId = narcoticData.id;
@@ -176,56 +380,52 @@ const useNarcoticSubmit = ({ formData, pillData, evidenceType, actualImages, nav
           edge_width_mm: pillData.edge_width_mm ? parseFloat(pillData.edge_width_mm) : null,
           weight_mg: pillData.weight_mg ? parseFloat(pillData.weight_mg) : null
         };
-        const pillRes = await fetch(`${BASE_URL}/narcotics/pill`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(pillBody)
-        });
-        const pillDataRes = await safeJson(pillRes);
-        if (!pillRes.ok) {
-          const err = new Error('ไม่สามารถบันทึกข้อมูลยาเม็ดได้');
-          err.response = { status: pillRes.status, data: pillDataRes };
-          throw err;
-        }
+
+        await CreatePill(pillBody);
       }
 
-      for (let i = 0; i < actualImages.length; i++) {
-        try {
-          const imageFormData = new FormData();
-          imageFormData.append('file', actualImages[i]);
-          imageFormData.append('description', `รูปภาพ ${formData.drugType || 'ยาเสพติด'} #${i + 1}`);
-          imageFormData.append('priority', String(i));
-          imageFormData.append('image_type', 'example');
-
-          const imageRes = await fetch(`${BASE_URL}/exhibits/${exhibitId}/narcotic/${narcoticId}/images`, {
-            method: 'POST',
-            credentials: 'include',
-            body: imageFormData
+      if (Array.isArray(actualImages) && actualImages.length > 0) {
+        const uploadAndVectorPromises = actualImages.map(async (file, i) => {
+          // 1) upload image
+          const uploadResp = await UploadNarcoticImage({
+            exhibitId,
+            narcoticId,
+            file,
+            description: `รูปภาพ ${formData.drugType || 'ยาเสพติด'} #${i + 1}`,
+            priority: i,
+            image_type: 'example'
           });
-          const imageData = await safeJson(imageRes);
-          if (imageRes.ok && imageData?.id) {
-            const vectorFormData = new FormData();
-            vectorFormData.append('file', actualImages[i]);
-            vectorFormData.append('narcotic_id', narcoticId);
-            vectorFormData.append('image_id', imageData.id);
-            await fetch(`${BASE_URL}/narcotics/images/vector`, {
-              method: 'POST',
-              credentials: 'include',
-              body: vectorFormData
-            });
-          } else {
-            console.warn('Image upload failed for index', i, imageRes.status, imageData);
+
+          // 2) extract uploaded image id (support common shapes)
+          const imageId = uploadResp?.data?.id ?? uploadResp?.id ?? null;
+          if (!imageId) {
+            const err = new Error('ไม่มี image id จากการอัปโหลด');
+            err.response = { status: 422, data: uploadResp };
+            throw err;
           }
-        } catch (imgErr) {
-          console.error('Image upload error', imgErr);
-        }
+
+          // 3) create vector from cropped/classified image (must succeed)
+          const vectorResult = await CreateImageVector({
+            file,
+            narcoticId,
+            imageId
+          });
+
+          return { upload: uploadResp, vector: vectorResult };
+        });
+
+        await Promise.all(uploadAndVectorPromises);
       }
 
       setSubmitSuccess(true);
-      setTimeout(() => navigate('/selectCatalogType/drugs-catalog'), 1500);
+      setTimeout(() => {
+        try {
+          navigate('/admin/narcotics/catalog-management');
+        } catch (navErr) {
+          // navigation failure intentionally not logged
+        }
+      }, 1200);
     } catch (error) {
-      console.error('Error creating narcotic:', error);
       if (error?.response) {
         const status = error.response.status;
         if (status === 401) setSubmitError('กรุณาเข้าสู่ระบบใหม่');

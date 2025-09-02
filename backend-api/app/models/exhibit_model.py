@@ -15,7 +15,7 @@ class Exhibit(Base):
     category: Mapped[Optional[str]] = mapped_column(String(100))
     subcategory: Mapped[Optional[str]] = mapped_column(String(100))
 
-    # Relationships: use string forward-references to avoid import cycles.
+    # Relationships
     narcotics: Mapped[List["Narcotic"]] = relationship(
         "Narcotic",
         back_populates="exhibit",

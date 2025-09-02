@@ -41,7 +41,7 @@ class ModelSegmentService:
                     "detection_type": class_name,
                     "confidence": round(conf_list[i], 4) if i < len(conf_list) else None
                 }
-                # attach cropped image (base64) when requested
+                
                 if include_crops and image is not None:
                     try:
                         mask = results.masks.data[i].cpu().numpy()

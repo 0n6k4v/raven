@@ -3,6 +3,7 @@ import cloudinary
 import cloudinary.uploader
 from fastapi import UploadFile
 from dotenv import load_dotenv
+from starlette.concurrency import run_in_threadpool
 
 load_dotenv()
 
@@ -13,7 +14,13 @@ cloudinary.config(
 )
 
 async def upload_image_to_cloudinary(file: UploadFile, folder: str = "firearm_examples"):
-    result = await cloudinary.uploader.async_upload(
+    try:
+        file.file.seek(0)
+    except Exception:
+        pass
+
+    result = await run_in_threadpool(
+        cloudinary.uploader.upload,
         file.file,
         folder=folder,
         resource_type="image"

@@ -1,16 +1,11 @@
 from fastapi import APIRouter, status, Depends, HTTPException, Body
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from app.schemas.narcotic_schema import NarcoticWithRelations, NarcoticCreate
-from app.schemas.narcotic_pill_schema import NarcoticPillBase
 from app.config.db_config import get_async_db
-from app.controllers.exhibit_controller import get_exhibit_by_id
-from app.controllers.narcotic_controller import (
-    get_narcotics,
-    delete_narcotic,
-    get_narcotic_with_relations,
-)
+from app.schemas.narcotic_pill_schema import NarcoticPill
+from app.schemas.narcotic_schema import NarcoticWithRelations, NarcoticCreate
+from app.controllers.exhibit_controller import ExhibitController
+from app.controllers.narcotic_controller import NarcoticController
 from app.controllers.narcotic_image_vector_controller import search_similar_narcotics_with_vector
 
 router = APIRouter(tags=["narcotics"])
@@ -22,11 +17,13 @@ async def create_narcotic(
 ):
     try:
         exhibit_id = narcotic.exhibit_id
-        exhibit = await get_exhibit_by_id(db, exhibit_id)
+        exhibit_controller = ExhibitController(db)
+        exhibit = await exhibit_controller.get_exhibit_by_id(exhibit_id)
         if not exhibit:
             raise HTTPException(status_code=404, detail="Exhibit not found")
         
-        narcotics = await get_narcotics(db)
+        narcotic_controller = NarcoticController(db)
+        narcotics = await narcotic_controller.get_narcotics()
         existing_narcotic = next((n for n in narcotics if n.exhibit_id == exhibit_id), None)
         if existing_narcotic:
             raise HTTPException(
@@ -41,10 +38,7 @@ async def create_narcotic(
         await db.commit()
         await db.refresh(db_narcotic)
         
-        return await get_narcotic_with_relations(
-            db,
-            db_narcotic.id
-        )
+        return await narcotic_controller.get_narcotic_with_relations(db_narcotic.id)
 
     except Exception as e:
         await db.rollback()
@@ -53,23 +47,30 @@ async def create_narcotic(
             detail=f"Failed to create narcotic: {str(e)}"
         )
 
-@router.post("/narcotics/pill", status_code=status.HTTP_200_OK, response_model=NarcoticPillBase)
+@router.post("/narcotics/pill", status_code=status.HTTP_200_OK, response_model=NarcoticPill)
 async def create_pill_info(
-    pill_info: NarcoticPillBase,
+    pill_info: NarcoticPill,
     db: AsyncSession = Depends(get_async_db)
 ):
-    narcotic_id = pill_info.narcotic_id
-    
+    if hasattr(pill_info, "model_dump"):
+        payload = pill_info.model_dump()
+    elif hasattr(pill_info, "dict"):
+        payload = pill_info.dict()
+    else:
+        payload = pill_info
+
+    narcotic_id = payload.get("narcotic_id") or payload.get("narcoticId") or payload.get("id")
+
     if not narcotic_id:
         raise HTTPException(status_code=400, detail="narcotic_id is required")
-    
-    db_narcotic = await get_narcotic(db, narcotic_id)
-    
+
+    narcotic_controller = NarcoticController(db)
+    db_narcotic = await narcotic_controller.get_narcotic(narcotic_id)
+     
     if not db_narcotic:
         raise HTTPException(status_code=404, detail="Narcotic not found")
     
-    result = await NarcoticService.create_pill_info(
-        db,
+    result = await narcotic_controller.create_pill_info(
         narcotic_id,
         pill_info
     )
@@ -90,8 +91,8 @@ async def read_narcotics(
     form_id: Optional[int] = None,
     include_relations: bool = True
 ):
-    narcotics = await get_narcotics(
-        db,
+    narcotic_controller = NarcoticController(db)
+    narcotics = await narcotic_controller.get_narcotics(
         skip=skip,
         limit=limit,
         search=search,
@@ -130,7 +131,41 @@ async def delete_narcotic_by_id(
     narcotic_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
-    success = await delete_narcotic(db, narcotic_id)
+    narcotic_controller = NarcoticController(db)
+    success = await narcotic_controller.delete_narcotic(narcotic_id)
     if not success:
         raise HTTPException(status_code=404, detail="Narcotic not found")
     return None
+
+@router.post("/narcotics/images/vector/save", status_code=status.HTTP_201_CREATED)
+async def save_image_vector(
+    payload: Dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_async_db)
+):
+    narcotic_id = payload.get("narcotic_id") or payload.get("narcoticId") or payload.get("id")
+    image_id = payload.get("image_id") or payload.get("imageId")
+    vector_data = payload.get("vector_data") or payload.get("vector")
+
+    if not narcotic_id:
+        raise HTTPException(status_code=400, detail="narcotic_id is required")
+    if not image_id:
+        raise HTTPException(status_code=400, detail="image_id is required")
+    if not vector_data or not isinstance(vector_data, list):
+        raise HTTPException(status_code=400, detail="vector_data (list of floats) is required")
+
+    narcotic_controller = NarcoticController(db)
+
+    db_narcotic = await narcotic_controller.get_narcotic(int(narcotic_id))
+    if not db_narcotic:
+        raise HTTPException(status_code=404, detail="Narcotic not found")
+
+    try:
+        db_vector = await narcotic_controller.add_image_vector(int(narcotic_id), int(image_id), vector_data)
+        return {
+            "success": True,
+            "vector_id": getattr(db_vector, "id", None),
+            "narcotic_id": int(narcotic_id),
+            "image_id": int(image_id),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save image vector: {str(e)}")

@@ -71,7 +71,7 @@ const ThumbnailImage = memo(function ThumbnailImage({ src, alt, onClick }) {
       }}
       role="button"
       tabIndex={0}
-      className="w-full h-full object-contain"
+      className="w-full h-full object-contain bg-white"
       onError={(e) => {
         e.currentTarget.style.display = 'none';
       }}
@@ -107,11 +107,15 @@ const SortableImage = ({ id, src, onSelect, onRemove, isSelected = false }) => {
   );
 
   return (
-    <div className="relative group inline-block" ref={setNodeRef} style={undefined} {...attributes}>
-      <div style={style} {...listeners} className="w-16 h-16">
+    <div className="relative group inline-block" ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <div className="w-16 h-16">
         <ThumbnailImage src={src} alt={`thumb-${id}`} onClick={handleSelect} />
         <div
-          className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"
+          className={
+            isSelected
+              ? 'absolute inset-0 bg-black/50 transition-all duration-300 pointer-events-none'
+              : 'absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 pointer-events-none'
+          }
           aria-hidden="true"
         />
       </div>
