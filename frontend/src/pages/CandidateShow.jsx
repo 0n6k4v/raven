@@ -5,7 +5,6 @@ import { PiImageBroken } from 'react-icons/pi';
 import { IoClose } from 'react-icons/io5';
 import { readCookie } from '../utils/cookies';
 import { NarcoticApiService } from '../services/api/narcoticApiService';
-// import { fetchGunReferenceImages, getGunReferenceImage } from '../../services/gunReferenceService';
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -185,6 +184,27 @@ async function classifyFirearmModel(brand, dataUrl, opts = { timeoutMs: 180000 }
   }
 }
 
+async function getFirearmByNormalized(normalizedName, { signal } = {}) {
+  if (!normalizedName) return null;
+
+  const url = new URL(`${BASE_URL}/firearm/get-by-normalized`);
+  url.searchParams.set('normalized_name', normalizedName);
+
+  const res = await fetch(url.toString(), { method: 'GET', signal });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`getFirearmByNormalized failed: ${res.status} ${text}`);
+  }
+
+  if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 // ==================== PRESENTATIONAL COMPONENTS ====================
 const BrandCard = React.memo(({ label, confidence = 0 }) => (
   <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-center justify-between shadow-sm">
@@ -221,75 +241,143 @@ const GunBrandPanel = React.memo(({
   brandIdx,
   expanded,
   toggle,
-  models,
+  models = [],
   getModelImage,
   isLoadingImages,
   selectedIndex,
-  candidates,
-  onSelect
-}) => (
-  <div key={`brand-${brandIdx}`} className="border border-gray-300 rounded-lg overflow-hidden">
-    <div
-      onClick={() => toggle(brand.name)}
-      className={`p-4 bg-gray-50 flex items-center justify-between cursor-pointer ${expanded ? 'border-b border-gray-300' : ''}`}
-    >
-      <div className="flex-1">
-        <div className="font-medium">{brand.name}</div>
-        <div className={`text-sm text-gray-500`}>
-          ความมั่นใจ: {formatConfidence(brand.confidence)}
-          {brand.models.length > 0 && ` • ${brand.models.length} รุ่น`}
-        </div>
-      </div>
-      {expanded ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronRight className="w-5 h-5 text-gray-500" />}
-    </div>
+  candidates = [],
+  onSelect,
+  dbCandidates = [],
+  firearmReady = false
+}) => {
+  const brandName = brand.name || brand.label || '';
+  const modelList = Array.isArray(models) && models.length > 0 ? models : (brand.models || []);
 
-    {expanded && brand.models.length > 0 && (
-      <div className="bg-white divide-y divide-gray-100">
-        {brand.models.map((model, modelIdx) => {
-          const candidateIndex = candidates.findIndex(
-            c => c.brandName === brand.name && c.modelName === model.name
-          );
-          const referenceImage = getModelImage(brand.name, model.name);
-          return (
-            <div
-              key={`model-${brandIdx}-${modelIdx}`}
-              className={`p-4 flex items-center justify-between ${selectedIndex === candidateIndex ? 'bg-red-50' : ''}`}
-              onClick={() => onSelect(candidateIndex)}
-            >
-              <div className="flex-1 flex items-center">
-                {isLoadingImages ? (
-                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+  // DB candidates that belong to this brand (case-insensitive)
+  const brandDbCandidates = firearmReady
+    ? (Array.isArray(dbCandidates) ? dbCandidates.filter(d => String(d.brandName || '').toLowerCase() === String(brandName).toLowerCase()) : [])
+    : [];
+
+  return (
+    <div key={`brand-${brandIdx}`} className="border border-gray-300 rounded-lg overflow-hidden">
+      <div
+        onClick={() => toggle(brandName)}
+        className={`p-4 bg-gray-50 flex items-center justify-between cursor-pointer ${expanded ? 'border-b border-gray-300' : ''}`}
+      >
+        <div className="flex-1">
+          <div className="font-medium">{brandName}</div>
+          <div className={`text-sm text-gray-500`}>
+            ความมั่นใจ: {formatConfidence(brand.confidence)}
+            {modelList.length > 0 && ` • ${modelList.length} รุ่น`}
+          </div>
+        </div>
+        {expanded ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronRight className="w-5 h-5 text-gray-500" />}
+      </div>
+
+      {expanded && modelList.length > 0 && (
+        <div className="bg-white divide-y divide-gray-100">
+          {modelList.map((model, modelIdx) => {
+            const modelName = model.name || model.label || '';
+            const candidateIndex = candidates.findIndex(
+              c => String(c.brandName || '').toLowerCase() === String(brandName).toLowerCase() &&
+                   String(c.modelName || '').toLowerCase() === String(modelName).toLowerCase()
+            );
+            const referenceImage = getModelImage ? getModelImage(brandName, modelName) : '';
+            return (
+              <div
+                key={`model-${brandIdx}-${modelIdx}`}
+                className={`p-4 flex items-center justify-between ${selectedIndex === candidateIndex ? 'bg-red-50' : ''}`}
+                onClick={() => onSelect(candidateIndex)}
+              >
+                <div className="flex-1 flex items-center">
+                  {isLoadingImages ? (
+                    <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                    </div>
+                  ) : referenceImage ? (
+                    <img
+                      src={referenceImage}
+                      alt={`${brandName} ${modelName}`}
+                      className="w-14 h-14 object-contain rounded-lg mr-3 flex-shrink-0 border border-gray-300"
+                      onError={(e) => { e.target.onerror = null; e.target.src = ''; }}
+                    />
+                  ) : (
+                    <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 border border-gray-300">
+                      <PiImageBroken className="text-gray-400 text-xl" />
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="font-medium">{modelName}</div>
+                    <div className={`text-sm text-gray-500`}>
+                      ความมั่นใจ: {formatConfidence(model.confidence)}
+                    </div>
                   </div>
-                ) : referenceImage ? (
-                  <img
-                    src={referenceImage}
-                    alt={`${brand.name} ${model.name}`}
-                    className="w-14 h-14 object-contain rounded-lg mr-3 flex-shrink-0 border border-gray-300"
-                    onError={(e) => { e.target.onerror = null; e.target.src = ''; }}
-                  />
-                ) : (
-                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 border border-gray-300">
-                    <PiImageBroken className="text-gray-400 text-xl" />
+                </div>
+
+                {selectedIndex === candidateIndex && (
+                  <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center ml-2 flex-shrink-0">
+                    <Check className="w-4 h-4 text-white" />
                   </div>
                 )}
-
-                <div>
-                  <div className="font-medium">{model.name}</div>
-                  <div className={`text-sm text-gray-500`}>
-                    ความมั่นใจ: {formatConfidence(model.confidence)}
-                  </div>
-                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {selectedIndex === candidateIndex && (
-                <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center ml-2 flex-shrink-0">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {expanded && brandDbCandidates.length > 0 && (
+        <div className="bg-white divide-y divide-gray-100 p-3">
+          <div className="space-y-2">
+            {brandDbCandidates.map((cand, i) => (
+              <FirearmCandidateCard
+                key={`db-${brandIdx}-${i}-${cand.normalized || i}`}
+                candidate={cand}
+                selected={selectedIndex !== undefined && candidates[selectedIndex] && candidates[selectedIndex].normalized === cand.normalized}
+                onClick={() => {
+                  const overallIndex = candidates.findIndex(c => c.normalized === cand.normalized);
+                  if (overallIndex !== -1) onSelect(overallIndex);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const FirearmCandidateCard = React.memo(({ candidate, selected = false, onClick }) => (
+  <div
+    className={`p-4 border border-gray-300 rounded-lg flex items-start cursor-pointer ${selected ? 'border-[#990000] bg-red-50' : ''}`}
+    onClick={onClick}
+    role="button"
+  >
+    <div className="mr-3 flex-shrink-0">
+      {candidate.example_images ? (
+        <img
+          src={candidate.example_images}
+          alt={candidate.label}
+          className="w-16 h-16 object-contain rounded-lg border border-gray-300"
+          onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}
+        />
+      ) : (
+        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-300">
+          <PiImageBroken className="text-gray-400 text-xl" />
+        </div>
+      )}
+    </div>
+
+    <div className="flex-1">
+      <div className="font-medium">{candidate.label || `${candidate.brandName || ''} ${candidate.modelName || ''}`}</div>
+      <div className="text-sm text-gray-500 mt-1">
+        ความมั่นใจ: {formatConfidence(candidate.confidence)}
+      </div>
+    </div>
+
+    {selected && (
+      <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center ml-2 flex-shrink-0">
+        <Check className="w-4 h-4 text-white" />
       </div>
     )}
   </div>
@@ -314,6 +402,9 @@ const CandidateShow = () => {
   const [candidates, setCandidates] = useState([]);
   const [detectionType, setDetectionType] = useState('');
   const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
+  const [dbFirearmCandidates, setDbFirearmCandidates] = useState([]);
+  const [firearmLoading, setFirearmLoading] = useState(false);
+  const [firearmReady, setFirearmReady] = useState(false);
   const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
   const cookieDt = (readCookie('detectionType') || '').toLowerCase();
 
@@ -433,21 +524,18 @@ const CandidateShow = () => {
           setCandidates(flatCandidates);
           setDetectionType('Gun');
 
-          // send each top3 brand + cropped image to backend model-classify and log responses
           if (top3.length > 0 && chosenVectorImage) {
             const tasks = top3.map(async (b) => {
               try {
                 const modelResp = await classifyFirearmModel(b.label, chosenVectorImage);
                 console.log(`[CandidateShow] classifyFirearmModel response for "${b.label}":`, modelResp);
 
-                // --- NEW: build normalized names (brand + model) and log them ---
                 const normalizeName = (s = '') =>
                   String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 
                 const modelEntries = Array.isArray(modelResp?.model_top3) ? modelResp.model_top3 : [];
                 const normalized = modelEntries.map(m => normalizeName(`${b.label}${m.label}`));
 
-                // if there is a selected_model but no model_top3, include it
                 if (normalized.length === 0 && modelResp?.selected_model) {
                   normalized.push(normalizeName(`${b.label}${modelResp.selected_model}`));
                 }
@@ -461,130 +549,79 @@ const CandidateShow = () => {
               }
             });
 
-            // run in parallel and wait for all to settle (non-blocking for UI rendering)
             const results = await Promise.allSettled(tasks);
-            // optional: compact logging of all results
-            console.log('[CandidateShow] classifyFirearmModel all settled:', results);
+            try {
+              const allNormalized = results
+                .filter(r => r.status === 'fulfilled' && Array.isArray(r.value?.normalized))
+                .flatMap(r => r.value.normalized);
+
+              if (allNormalized.length > 0) {
+                setFirearmLoading(true);
+                setFirearmReady(false);
+                setDbFirearmCandidates([]);
+                let normalizedFetches = [];
+                try {
+                  normalizedFetches = await Promise.all(
+                    allNormalized.map(n =>
+                      getFirearmByNormalized(n)
+                        .then(resp => ({ normalized: n, resp }))
+                        .catch(err => ({ normalized: n, error: err?.message || String(err) }))
+                    )
+                  );
+                  console.log('[CandidateShow] getFirearmByNormalized responses:', normalizedFetches);
+
+                  const firearmCandidates = (normalizedFetches || [])
+                    .filter(item => item && item.resp && !item.error)
+                    .map(item => {
+                      const r = item.resp;
+                      return {
+                        label: `${r.brand || ''} ${r.model || ''}`.trim(),
+                        confidence: 0,
+                        brandName: r.brand || '',
+                        modelName: r.model || '',
+                        exhibit_id: r.exhibit_id ?? r.id ?? null,
+                        example_images: Array.isArray(r.example_images) && r.example_images.length > 0
+                          ? r.example_images[0]?.image_url || ''
+                          : '',
+                        normalized: item.normalized
+                      };
+                    });
+
+                  // store DB-backed firearm candidates separately and mark ready
+                  setDbFirearmCandidates(firearmCandidates);
+
+                  // merge into general candidates so selection/confirm logic still works,
+                  // but UI will only show DB cards after firearmReady === true
+                  if (firearmCandidates.length > 0) {
+                    setCandidates(prev => {
+                      const existing = Array.isArray(prev) ? prev.slice() : [];
+                      const seen = new Set(existing.map(c => c.normalized).filter(Boolean));
+                      const toAdd = firearmCandidates.filter(fc => !seen.has(fc.normalized));
+                      return [...existing, ...toAdd];
+                    });
+                  }
+                } catch (e) {
+                  console.error('[CandidateShow] error mapping firearm responses to candidates:', e);
+                } finally {
+                  setFirearmLoading(false);
+                  setFirearmReady(true);
+                }
+              } else {
+                console.log('[CandidateShow] no normalized names to query getFirearmByNormalized');
+                // nothing to fetch -> mark ready so UI will not hang on loading
+                setDbFirearmCandidates([]);
+                setFirearmLoading(false);
+                setFirearmReady(true);
+              }
+            } catch (err) {
+              console.error('[CandidateShow] error calling getFirearmByNormalized:', err);
+            }
           }
         } catch (err) {
           console.error('[CandidateShow] classifyFirearmBrand error:', err);
         }
       })();
     }
-
-    /* LEGACY LOGIC COMMENTED OUT
-    const dt = ('').toString().toLowerCase();
-
-    if (dt === 'narcotic' || dt === 'drug' || data.drugCandidates || data.similarNarcotics) {
-      setDetectionType('Drug');
-
-      if (Array.isArray(data.drugCandidates) && data.drugCandidates.length > 0) {
-        setCandidates(data.drugCandidates);
-        return;
-      }
-
-      if (Array.isArray(data.similarNarcotics) && data.similarNarcotics.length > 0) {
-        const formatted = data.similarNarcotics.map(n => ({
-          label: n.characteristics || 'ยาเสพติดไม่ทราบลักษณะ',
-          displayName: n.characteristics || 'ยาเสพติดไม่ทราบลักษณะ',
-          confidence: n.similarity || 0,
-          narcotic_id: n.narcotic_id,
-          drug_type: n.drug_type || 'ยาเสพติดไม่ทราบชนิด',
-          drug_category: n.drug_category || 'ยาเสพติดไม่ทราบประเภท',
-          characteristics: n.characteristics || 'ไม่ทราบอัตลักษณ์',
-          similarity: n.similarity || 0
-        }));
-        formatted.push({
-          label: 'ยาเสพติดประเภทไม่ทราบชนิด',
-          displayName: 'ยาเสพติดประเภทไม่ทราบชนิด',
-          confidence: 0,
-          isUnknownDrug: true,
-          characteristics: 'ไม่ทราบอัตลักษณ์',
-          exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_DRUG,
-          drug_type: 'ไม่ทราบชนิด',
-          drug_category: 'ไม่ทราบประเภท'
-        });
-        setCandidates(formatted);
-        return;
-      }
-
-      if (Array.isArray(data.details) && data.details.length > 0) {
-        const limited = data.details.slice(0, 3).map(d => ({
-          label: d.pill_name,
-          confidence: d.confidence || data.confidence || 0
-        }));
-        limited.push({ label: 'ยาเสพติดประเภทไม่ทราบชนิด', confidence: 0, isUnknownDrug: true });
-        setCandidates(limited);
-        return;
-      }
-
-      setCandidates([
-        { label: data.prediction || '', confidence: data.confidence || 0 },
-        { label: 'ยาเสพติดประเภทไม่ทราบชนิด', confidence: 0, isUnknownDrug: true }
-      ]);
-      return;
-    }
-
-    if (dt === 'firearm' || dt === 'gun' || dt === 'weapon' || data.brandData) {
-      setDetectionType('Gun');
-
-      if (Array.isArray(data.brandData) && data.brandData.length > 0) {
-        setBrandData(data.brandData);
-        const flat = [];
-        data.brandData.forEach(brand => {
-          (brand.models || []).forEach(model => {
-            flat.push({
-              label: `${brand.name} ${model.name}`,
-              confidence: model.confidence,
-              brandName: brand.name,
-              modelName: model.name
-            });
-          });
-        });
-        flat.push({
-          label: 'อาวุธปืนไม่ทราบชนิด',
-          confidence: 0,
-          brandName: 'Unknown',
-          modelName: 'Unknown',
-          isUnknownWeapon: true
-        });
-        setCandidates(flat);
-        return;
-      }
-
-      if (Array.isArray(data.candidates) && data.candidates.length > 0) {
-        setCandidates(data.candidates);
-        const brandMap = {};
-        data.candidates.forEach(c => {
-          if (c.brandName && c.brandName !== 'Unknown') {
-            if (!brandMap[c.brandName]) brandMap[c.brandName] = { name: c.brandName, confidence: c.confidence, models: [] };
-            if (c.modelName) brandMap[c.brandName].models.push({ name: c.modelName, confidence: c.confidence });
-          }
-        });
-        setBrandData(Object.values(brandMap));
-        return;
-      }
-
-      setCandidates([{
-        label: 'อาวุธปืนไม่ทราบชนิด',
-        confidence: 0,
-        brandName: 'Unknown',
-        modelName: 'Unknown',
-        isUnknownWeapon: true
-      }]);
-      setBrandData([]);
-      return;
-    }
-
-    setIsUnknownObject(true);
-    setDetectionType('Unknown');
-    setCandidates([{
-      label: 'วัตถุพยานที่ไม่รู้จัก',
-      confidence: 0,
-      isUnknown: true,
-      exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_OBJECT
-    }]);
-    */
   }, [location.state]);
 
   const handleGoBack = useCallback(() => {
@@ -749,16 +786,34 @@ const CandidateShow = () => {
           </div>
         ) : cookieDt === 'gun' ? (
           <div className="space-y-3">
-            {brandData && brandData.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {brandData.map((b, idx) => (
-                  <BrandCard key={`brand-${idx}`} label={b.label} confidence={b.confidence} />
-                ))}
-              </div>
+            {firearmLoading ? (
+              <div className="p-4 text-center text-gray-500">กำลังประมวลผลผลยี่ห้อและค้นหาจากฐานข้อมูล...</div>
+            ) : firearmReady ? (
+              brandData && brandData.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {brandData.map((b, idx) => (
+                    <GunBrandPanel
+                      key={`brand-${idx}`}
+                      brand={{ name: b.label, confidence: b.confidence, models: b.models || [] }}
+                      brandIdx={idx}
+                      expanded={!!expandedBrands[b.label]}
+                      toggle={(name) => toggleBrand(name)}
+                      models={b.models || []}
+                      getModelImage={() => ''}
+                      isLoadingImages={false}
+                      selectedIndex={selectedIndex}
+                      candidates={candidates}
+                      onSelect={(i) => handleSelectCandidate(i)}
+                      dbCandidates={dbFirearmCandidates}
+                      firearmReady={firearmReady}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อที่ชัดเจน</div>
+              )
             ) : (
-              <div className="p-4 text-center text-gray-500">
-                ยังไม่มีผลยี่ห้อ — กรุณาลองใหม่หรือรอการประมวลผล
-              </div>
+              <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อ — กรุณาลองใหม่หรือรอการประมวลผล</div>
             )}
           </div>
          ) : (
