@@ -1,11 +1,221 @@
+from __future__ import annotations
 import os
 import threading
 from pathlib import Path
-from ultralytics import YOLO
-from typing import Dict
+from typing import Dict, List, Optional, Any
 import traceback
 import asyncio
+from dataclasses import dataclass, field
+
 import numpy as np
+from ultralytics import YOLO
+
+@dataclass(frozen=True)
+class ModelRecord:
+    brand_key: str
+    brand_display: str
+    path: Path
+
+class FilesystemRepository:
+    def __init__(self, base_path: Path):
+        self.base_path = base_path
+
+    def _normalize_brand(self, raw: str) -> str:
+        return "".join(ch.lower() for ch in (raw or "") if ch.isalnum())
+
+    def discover_paths(self) -> Dict[str, Any]:
+        segment = self.base_path / "segment_model.pt"
+        narcotic = self.base_path / "narcotics" / "narcotic_model.pt"
+        brand = self.base_path / "firearms" / "brand" / "gun_brand.pt"
+
+        brand_models: List[ModelRecord] = []
+        model_dir = self.base_path / "firearms" / "model"
+        if model_dir.exists() and model_dir.is_dir():
+            for sub in sorted(model_dir.iterdir()):
+                if not sub.is_dir():
+                    continue
+                candidate: Optional[Path] = None
+                for name in ("best.pt", "model.pt", "weights.pt"):
+                    p = sub / name
+                    if p.exists():
+                        candidate = p
+                        break
+                if candidate is None:
+                    pts = list(sub.glob("*.pt"))
+                    if pts:
+                        candidate = pts[0]
+                if candidate:
+                    brand_display = sub.name.replace("_Model", "")
+                    brand_key = self._normalize_brand(brand_display)
+                    brand_models.append(ModelRecord(brand_key=brand_key, brand_display=brand_display, path=candidate))
+
+        return {
+            "segment": segment,
+            "narcotic": narcotic,
+            "brand": brand,
+            "brand_models": brand_models,
+        }
+
+class YOLOAdapter:
+    @staticmethod
+    def load(path: Path, task: Optional[str] = None) -> YOLO:
+        if task:
+            return YOLO(str(path), task=task)
+        return YOLO(str(path))
+
+    @staticmethod
+    def infer(model: YOLO, image: Any) -> Any:
+        return model(image)
+
+
+class ModelLoaderUseCase:
+    def __init__(self, repo: FilesystemRepository, adapter: YOLOAdapter):
+        self.repo = repo
+        self.adapter = adapter
+
+        self.models_loaded: Dict[str, bool] = {
+            "segment": False,
+            "narcotic": False,
+            "brand": False,
+            "brand_specific": False,
+        }
+
+        self.model_segment: Optional[YOLO] = None
+        self.model_narcotic: Optional[YOLO] = None
+        self.model_firearm_brand: Optional[YOLO] = None
+        self.model_map: Dict[str, YOLO] = {}
+
+        self.segment_classes: Dict[int, str] = {0: "gun", 1: "pistol", 2: "rifle", 3: "weapon"}
+
+        self._loading_event = threading.Event()
+        self._load_thread = threading.Thread(target=self._background_load)
+        self._load_thread.daemon = True
+
+    def start_background_load(self):
+        if not self._load_thread.is_alive():
+            self._load_thread.start()
+
+    def wait_for_models(self, timeout: Optional[float] = None) -> bool:
+        return self._loading_event.wait(timeout)
+
+    def is_ready(self) -> bool:
+        return bool(self.models_loaded.get("segment")) and bool(self.models_loaded.get("narcotic"))
+
+    def _normalize_brand(self, brand: str) -> str:
+        return "".join(ch.lower() for ch in (brand or "") if ch.isalnum())
+
+    def _load_single(self, path: Path, model_attr_name: str, model_key: str, update_names: bool = False):
+        if not path.exists():
+            self.models_loaded[model_key] = False
+            return
+        try:
+            model = self.adapter.load(path)
+            setattr(self, model_attr_name, model)
+            self.models_loaded[model_key] = True
+            if update_names and hasattr(model, "names") and getattr(model, "names"):
+                try:
+                    self.segment_classes = dict(getattr(model, "names"))
+                except Exception:
+                    pass
+        except Exception as e:
+            self.models_loaded[model_key] = False
+
+    def _load_brand_specific_models(self, records: List[ModelRecord], default_task: Optional[str] = "classify"):
+        for rec in records:
+            try:
+                if not rec.path.exists():
+                    continue
+                model = self.adapter.load(rec.path, task=default_task)
+                self.model_map[rec.brand_key] = model
+            except Exception:
+                pass
+        self.models_loaded["brand_specific"] = bool(self.model_map)
+
+    def _background_load(self):
+        try:
+            paths = self.repo.discover_paths()
+            self._load_single(paths["segment"], "model_segment", "segment", update_names=True)
+            self._load_single(paths["narcotic"], "model_narcotic", "narcotic", update_names=False)
+            self._load_single(paths["brand"], "model_firearm_brand", "brand", update_names=False)
+
+            brand_models: List[ModelRecord] = paths.get("brand_models", []) or []
+            if brand_models:
+                self._load_brand_specific_models(brand_models, default_task="classify")
+
+        except Exception:
+            pass
+        finally:
+            self._loading_event.set()
+
+    async def warmup_models(self, timeout_per_model: float = 120.0, retry_interval: float = 5.0, max_retries: int = 5):
+        import time
+
+        dummy = np.zeros((320, 320, 3), dtype=np.uint8)
+
+        async def _call_model_async(m):
+            return await asyncio.to_thread(m, dummy)
+
+        attempt = 0
+        while attempt < max_retries:
+            results = {"segmentation": False, "narcotic": False, "brand_specific": 0}
+            try:
+                if self.model_segment is not None:
+                    try:
+                        t0 = time.time()
+                        await asyncio.wait_for(_call_model_async(self.model_segment), timeout=timeout_per_model)
+                        results["segmentation"] = True
+                    except asyncio.TimeoutError:
+                        pass
+                    except Exception:
+                        pass
+
+                if self.model_narcotic is not None:
+                    try:
+                        t0 = time.time()
+                        await asyncio.wait_for(_call_model_async(self.model_narcotic), timeout=timeout_per_model)
+                        results["narcotic"] = True
+                    except asyncio.TimeoutError:
+                        pass
+                    except Exception:
+                        pass
+
+                warmed = 0
+                for i, m in enumerate(list(self.model_map.values())[:3]):
+                    try:
+                        t0 = time.time()
+                        await asyncio.wait_for(_call_model_async(m), timeout=timeout_per_model)
+                        warmed += 1
+                    except asyncio.TimeoutError:
+                        pass
+                    except Exception:
+                        pass
+                results["brand_specific"] = warmed
+
+                if results.get("segmentation") and results.get("narcotic"):
+                    return results
+
+                attempt += 1
+                if attempt >= max_retries:
+                    return results
+                await asyncio.sleep(retry_interval)
+
+            except Exception:
+                attempt += 1
+                if attempt >= max_retries:
+                    return {"segmentation": False, "narcotic": False, "brand_specific": 0}
+                await asyncio.sleep(retry_interval)
+
+    def get_warmup_status(self):
+        return {
+            "models_loaded": self.models_loaded.copy(),
+            "loading_complete": self._loading_event.is_set(),
+            "is_ready": self.is_ready(),
+            "available_models": {
+                "segmentation": self.model_segment is not None,
+                "narcotic": self.model_narcotic is not None,
+                "brand_specific_count": len(self.model_map),
+            },
+        }
 
 class ModelManager:
     _instance = None
@@ -20,181 +230,53 @@ class ModelManager:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized') and self._initialized:
+        if getattr(self, "_initialized", False):
             return
 
         model_root = Path(os.environ.get("MODEL_PATH", "/app/ai_models"))
-        print(f"[ModelManager] MODEL_PATH = {model_root}")
-        self.base_model_path = model_root
-        self._setup_paths()
+        repo = FilesystemRepository(model_root)
+        adapter = YOLOAdapter()
+        self._usecase = ModelLoaderUseCase(repo=repo, adapter=adapter)
 
-        self.models_loaded = {
-            'segment': False,
-            'brand': False,
-            'narcotic': False,
-            'brand_specific': False
-        }
+        self.models_loaded = self._usecase.models_loaded
+        self.model_segment = self._usecase.model_segment
+        self.model_narcotic = self._usecase.model_narcotic
+        self.model_firearm_brand = self._usecase.model_firearm_brand
+        self.model_map = self._usecase.model_map
+        self.segment_classes = self._usecase.segment_classes
 
-        self.model_segment = None
-        self.model_brand = None
-        self.model_narcotic = None
-        self.model_map = {}
-
-        self.segment_classes = {0: "gun", 1: "pistol", 2: "rifle", 3: "weapon"}
-
-        self.loading_complete = threading.Event()
-        self.loading_thread = threading.Thread(target=self._load_models_background)
-        self.loading_thread.daemon = True
-        self.loading_thread.start()
+        self._usecase.start_background_load()
 
         self._initialized = True
 
-    def _setup_paths(self):
-        self.path_ai_model_segment = self.base_model_path / "segment_model.pt"
-        self.path_ai_model_narcotic = self.base_model_path / "narcotics" / "narcotic_model.pt"
-        self.path_ai_model_brand = self.base_model_path / "firearms" / "brand" / "gun_brand.pt"
-
-        print(f"[ModelManager] Model paths: segment={self.path_ai_model_segment}, narcotic={self.path_ai_model_narcotic}, brand={self.path_ai_model_brand}")
-
-    def _load_models_background(self):
-        try:
-            models_to_load = [
-                (self.path_ai_model_segment, "model_segment", "segment", True),
-                (self.path_ai_model_narcotic, "model_narcotic", "narcotic", False),
-                (self.path_ai_model_brand, "model_brand", "brand", False),
-            ]
-            for path, attr_name, model_key, update_names in models_to_load:
-                self._load_yolo(path, attr_name, model_key, update_names)
-        except Exception as e:
-            print(f"[ModelManager] Error loading models in background: {e}")
-            traceback.print_exc()
-        finally:
-            self.loading_complete.set()
-            print("[ModelManager] Background model loading finished (loading_complete set)")
-
-    def _load_yolo(self, path: Path, attr_name: str, model_key: str, update_names: bool = False):
-        if not path.exists():
-            print(f"[ModelManager] WARNING: Model file not found: {path}")
-            self.models_loaded[model_key] = False
-            return
-        try:
-            print(f"[ModelManager] Loading model {model_key} from {path} ...")
-            model = YOLO(str(path))
-            setattr(self, attr_name, model)
-            self.models_loaded[model_key] = True
-            if update_names and hasattr(model, "names"):
-                self.segment_classes = model.names
-            print(f"[ModelManager] Loaded model {model_key} successfully")
-        except Exception as e:
-            print(f"[ModelManager] Failed to load YOLO model {model_key}: {e}")
-            traceback.print_exc()
-            self.models_loaded[model_key] = False
-
-    def wait_for_models(self, timeout: int = None) -> bool:
-        return self.loading_complete.wait(timeout)
+    def wait_for_models(self, timeout: Optional[float] = None) -> bool:
+        return self._usecase.wait_for_models(timeout)
 
     def is_ready(self) -> bool:
-        return bool(self.models_loaded.get("segment")) and bool(self.models_loaded.get("narcotic"))
+        return self._usecase.is_ready()
 
     def get_segmentation_model(self):
-        return self.model_segment
+        return self._usecase.model_segment
 
     def get_narcotic_model(self):
-        return self.model_narcotic
+        return self._usecase.model_narcotic
 
-    def get_brand_model(self):
-        return self.model_brand
+    def get_firearm_brand_model(self):
+        return self._usecase.model_firearm_brand
+
+    def get_firearm_model_model(self, brand: str = None):
+        if brand is None:
+            return self._usecase.model_map
+        target = "".join(ch.lower() for ch in (brand or "") if ch.isalnum())
+        if not target:
+            return None
+        return self._usecase.model_map.get(target)
 
     def get_segment_classes(self):
-        if hasattr(self, 'segment_classes') and self.segment_classes:
-            return self.segment_classes
-        else:
-            return {0: "gun", 1: "pistol", 2: "rifle", 3: "weapon"}
+        return self._usecase.segment_classes or {0: "gun", 1: "pistol", 2: "rifle", 3: "weapon"}
 
     async def warmup_models(self, timeout_per_model: float = 120.0, retry_interval: float = 5.0, max_retries: int = 5):
-        import time
-
-        print("[ModelManager] Warmup: starting (will retry until successful or max_retries reached)")
-        dummy = np.zeros((320, 320, 3), dtype=np.uint8)
-
-        async def _call_model_async(m):
-            return await asyncio.to_thread(m, dummy)
-
-        attempt = 0
-        while attempt < max_retries:
-             results = {"segmentation": False, "narcotic": False, "brand": False, "brand_specific": 0}
-             try:
-                # segmentation
-                if self.model_segment is not None:
-                    try:
-                        t0 = time.time()
-                        await asyncio.wait_for(_call_model_async(self.model_segment), timeout=timeout_per_model)
-                        results["segmentation"] = True
-                        print(f"[ModelManager] Warmup: segmentation finished in {time.time()-t0:.2f}s")
-                    except asyncio.TimeoutError:
-                        print(f"[ModelManager] Warmup: segmentation timed out after {timeout_per_model}s")
-                    except Exception as e:
-                        print(f"[ModelManager] Warmup: segmentation error: {e}")
-
-                # narcotic
-                if self.model_narcotic is not None:
-                    try:
-                        t0 = time.time()
-                        await asyncio.wait_for(_call_model_async(self.model_narcotic), timeout=timeout_per_model)
-                        results["narcotic"] = True
-                        print(f"[ModelManager] Warmup: narcotic finished in {time.time()-t0:.2f}s")
-                    except asyncio.TimeoutError:
-                        print(f"[ModelManager] Warmup: narcotic timed out after {timeout_per_model}s")
-                    except Exception as e:
-                        print(f"[ModelManager] Warmup: narcotic error: {e}")
-
-                # brand-specific: sample up to 3 models sequentially
-                warmed = 0
-                for i, m in enumerate(list(self.model_map.values())[:3]):
-                    try:
-                        t0 = time.time()
-                        await asyncio.wait_for(_call_model_async(m), timeout=timeout_per_model)
-                        warmed += 1
-                        print(f"[ModelManager] Warmup: brand model #{i} finished in {time.time()-t0:.2f}s")
-                    except asyncio.TimeoutError:
-                        print(f"[ModelManager] Warmup: brand model #{i} timed out")
-                    except Exception as e:
-                        print(f"[ModelManager] Warmup: brand model #{i} error: {e}")
-                results["brand_specific"] = warmed
-
-                print(f"[ModelManager] Warmup attempt result: {results}")
-
-                # require critical warmups to succeed
-                if results.get("segmentation") and results.get("narcotic"):
-                    print("[ModelManager] Warmup: critical models warmed successfully")
-                    return results
-
-                # otherwise wait and retry (increment attempt)
-                attempt += 1
-                print(f"[ModelManager] Warmup: attempt {attempt}/{max_retries} not all warmed, retrying in {retry_interval}s")
-                if attempt >= max_retries:
-                    print("[ModelManager] Warmup: reached max_retries, returning current status")
-                    return results
-                await asyncio.sleep(retry_interval)
-
-             except Exception as e:
-                 print(f"[ModelManager] Warmup failed with unexpected error: {e}")
-                 traceback.print_exc()
-                 attempt += 1
-                 if attempt >= max_retries:
-                    print("[ModelManager] Warmup: reached max_retries after exception, returning")
-                    return {"segmentation": False, "narcotic": False, "brand_specific": 0}
-                 print(f"[ModelManager] Retrying in {retry_interval}s (attempt {attempt}/{max_retries})")
-                 await asyncio.sleep(retry_interval)
+        return await self._usecase.warmup_models(timeout_per_model, retry_interval, max_retries)
 
     def get_warmup_status(self):
-        return {
-            "models_loaded": self.models_loaded.copy(),
-            "loading_complete": self.loading_complete.is_set(),
-            "is_ready": self.is_ready(),
-            "available_models": {
-                "segmentation": self.model_segment is not None,
-                "narcotic": self.model_narcotic is not None,
-                "brand_specific_count": len(self.model_map)
-            }
-        }
+        return self._usecase.get_warmup_status()

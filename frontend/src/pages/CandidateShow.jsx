@@ -144,6 +144,47 @@ async function classifyFirearmBrand(dataUrl, opts = { timeoutMs: 180000 }) {
   }
 }
 
+async function classifyFirearmModel(brand, dataUrl, opts = { timeoutMs: 180000 }) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+  try {
+    if (!brand || !dataUrl) {
+      clearTimeout(timeoutId);
+      return null;
+    }
+
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+
+    const formData = new FormData();
+
+    formData.append('file', blob, 'image.jpg');
+    formData.append('brand', brand);
+
+    const resp = await fetch(`${BASE_URL}/firearm-model-classify`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`Backend returned ${resp.status}: ${txt}`);
+    }
+
+    try {
+      return await resp.json();
+    } catch {
+      return await resp.text();
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 // ==================== PRESENTATIONAL COMPONENTS ====================
 const BrandCard = React.memo(({ label, confidence = 0 }) => (
   <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-center justify-between shadow-sm">
@@ -312,13 +353,6 @@ const CandidateShow = () => {
                 ? similarResults.map(r => r?.narcotic_id).filter(id => id !== undefined && id !== null)
                 : [];
               setSimilarNarcoticIds(narcoticIds);
-
-              const narcoticSimilarity = Array.isArray(similarResults)
-                ? similarResults.map(r => ({
-                    narcotic_id: r?.narcotic_id ?? null,
-                    similarity: (typeof r?.similarity === 'number') ? r.similarity : (Number(r?.similarity) || 0)
-                  }))
-                : [];
               
               let narcoticDetails = [];
               if (narcoticIds.length > 0) {
@@ -386,12 +420,9 @@ const CandidateShow = () => {
         try {
           const resp = await classifyFirearmBrand(chosenVectorImage);
           console.log('[CandidateShow] classifyFirearmBrand response:', resp);
-
-          // set brand list for rendering
           const top3 = Array.isArray(resp?.brand_top3) ? resp.brand_top3 : [];
           setBrandData(top3);
 
-          // optionally set candidates to allow selection UI reuse
           const flatCandidates = top3.map((b, i) => ({
             label: b.label,
             confidence: b.confidence ?? 0,
@@ -401,6 +432,40 @@ const CandidateShow = () => {
           }));
           setCandidates(flatCandidates);
           setDetectionType('Gun');
+
+          // send each top3 brand + cropped image to backend model-classify and log responses
+          if (top3.length > 0 && chosenVectorImage) {
+            const tasks = top3.map(async (b) => {
+              try {
+                const modelResp = await classifyFirearmModel(b.label, chosenVectorImage);
+                console.log(`[CandidateShow] classifyFirearmModel response for "${b.label}":`, modelResp);
+
+                // --- NEW: build normalized names (brand + model) and log them ---
+                const normalizeName = (s = '') =>
+                  String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                const modelEntries = Array.isArray(modelResp?.model_top3) ? modelResp.model_top3 : [];
+                const normalized = modelEntries.map(m => normalizeName(`${b.label}${m.label}`));
+
+                // if there is a selected_model but no model_top3, include it
+                if (normalized.length === 0 && modelResp?.selected_model) {
+                  normalized.push(normalizeName(`${b.label}${modelResp.selected_model}`));
+                }
+
+                console.log(`[CandidateShow] normalized names for brand "${b.label}":`, normalized);
+
+                return { brand: b.label, ok: true, resp: modelResp, normalized };
+              } catch (err) {
+                console.error(`[CandidateShow] classifyFirearmModel error for "${b.label}":`, err);
+                return { brand: b.label, ok: false, error: err };
+              }
+            });
+
+            // run in parallel and wait for all to settle (non-blocking for UI rendering)
+            const results = await Promise.allSettled(tasks);
+            // optional: compact logging of all results
+            console.log('[CandidateShow] classifyFirearmModel all settled:', results);
+          }
         } catch (err) {
           console.error('[CandidateShow] classifyFirearmBrand error:', err);
         }

@@ -96,7 +96,7 @@ def _get_top3_from_prediction(pred: Any, names: Dict[int, str]) -> List[Dict[str
 class ModelBrandService:
     def analyze_gun_brand(self, cropped_image: Any) -> Dict[str, Any]:
         model_manager = get_model_manager()
-        model_brand = model_manager.get_brand_model()
+        model_brand = model_manager.get_firearm_brand_model()
         if model_brand is None:
             return {"selected_brand": "Unknown", "brand_top3": []}
 
