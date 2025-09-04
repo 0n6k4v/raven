@@ -9,7 +9,15 @@ from .narcotic_model import (
     NarcoticPill,
 )
 from .drug_form_model import DrugForm
+
 from .firearm_model import Firearm
+from .firearm_ammunition_model import FirearmAmmunition
+from .ammunition_model import Ammunition
+from .firearm_example_image_model import FirearmExampleImage
+
+from .user_model import User
+from .role_model import Role
+from .user_permission_model import UserPermission
 
 __all__ = [
     "Exhibit",
@@ -22,4 +30,10 @@ __all__ = [
     "NarcoticPill",
     "DrugForm",
     "Firearm",
+    "FirearmAmmunition",
+    "Ammunition",
+    "FirearmExampleImage",
+    "User",
+    "Role",
+    "UserPermission",
 ]

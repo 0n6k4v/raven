@@ -10,3 +10,4 @@ from .exhibit import router as exhibit_router
 from .inference import router as inference_router
 from .vector import router as vector_router
 from .history import router as history_router
+from .firearm import router as firearm_router
