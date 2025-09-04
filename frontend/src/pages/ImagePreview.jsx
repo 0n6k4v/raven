@@ -181,7 +181,6 @@ const useImagePreviewLogic = () => {
 
       const result = await response.json();
 
-      // เก็บภาพที่ถูก crop (ถ้ามี) จาก response.objects
       try {
         if (Array.isArray(result.objects) && result.objects.length) {
           const drugObj = result.objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug');

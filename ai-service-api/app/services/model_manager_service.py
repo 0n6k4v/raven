@@ -50,16 +50,18 @@ class ModelManager:
         self._initialized = True
 
     def _setup_paths(self):
-        # expect files under MODEL_PATH (mounted by docker)
         self.path_ai_model_segment = self.base_model_path / "segment_model.pt"
         self.path_ai_model_narcotic = self.base_model_path / "narcotics" / "narcotic_model.pt"
-        print(f"[ModelManager] Model paths: segment={self.path_ai_model_segment}, narcotic={self.path_ai_model_narcotic}")
+        self.path_ai_model_brand = self.base_model_path / "firearms" / "brand" / "gun_brand.pt"
+
+        print(f"[ModelManager] Model paths: segment={self.path_ai_model_segment}, narcotic={self.path_ai_model_narcotic}, brand={self.path_ai_model_brand}")
 
     def _load_models_background(self):
         try:
             models_to_load = [
                 (self.path_ai_model_segment, "model_segment", "segment", True),
                 (self.path_ai_model_narcotic, "model_narcotic", "narcotic", False),
+                (self.path_ai_model_brand, "model_brand", "brand", False),
             ]
             for path, attr_name, model_key, update_names in models_to_load:
                 self._load_yolo(path, attr_name, model_key, update_names)
@@ -92,7 +94,6 @@ class ModelManager:
         return self.loading_complete.wait(timeout)
 
     def is_ready(self) -> bool:
-        # critical models must be loaded
         return bool(self.models_loaded.get("segment")) and bool(self.models_loaded.get("narcotic"))
 
     def get_segmentation_model(self):
@@ -100,6 +101,9 @@ class ModelManager:
 
     def get_narcotic_model(self):
         return self.model_narcotic
+
+    def get_brand_model(self):
+        return self.model_brand
 
     def get_segment_classes(self):
         if hasattr(self, 'segment_classes') and self.segment_classes:
@@ -111,7 +115,6 @@ class ModelManager:
         import time
 
         print("[ModelManager] Warmup: starting (will retry until successful or max_retries reached)")
-        # smaller dummy to speed up warmup
         dummy = np.zeros((320, 320, 3), dtype=np.uint8)
 
         async def _call_model_async(m):

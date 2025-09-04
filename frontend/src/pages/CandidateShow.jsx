@@ -102,23 +102,56 @@ const findExhibitByNarcoticId = async (narcoticId) => {
 };
 
 // ==================== CUSTOM HOOKS ====================
-const useGunReferenceImages = () => {
-  const [images] = useState({ default: '' });
-  const [loading] = useState(false);
-  const getModelImage = useCallback(() => null, []);
-  return { images, loading, getModelImage };
-};
-
-const useNarcoticsDetails = (candidates, detectionType) => {
-  const [detailsMap] = useState({});
-  const [loading] = useState(false);
-  const loadAll = useCallback(async () => { /* no-op */ }, []);
-  return { detailsMap, loading, loadAll };
-};
-
 const getImageHeight = () => 'h-64';
 
+// ==================== SERVICES ====================
+async function classifyFirearmBrand(dataUrl, opts = { timeoutMs: 180000 }) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+  try {
+    if (!dataUrl) {
+      clearTimeout(timeoutId);
+      return null;
+    }
+
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+
+    const formData = new FormData();
+    formData.append('image', blob, 'image.jpg');
+
+    const resp = await fetch(`${BASE_URL}/firearm-brand-classify`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`Backend returned ${resp.status}: ${txt}`);
+    }
+
+    try {
+      return await resp.json();
+    } catch {
+      return await resp.text();
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 // ==================== PRESENTATIONAL COMPONENTS ====================
+const BrandCard = React.memo(({ label, confidence = 0 }) => (
+  <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-center justify-between shadow-sm">
+    <div className="text-base font-medium text-gray-800">{label}</div>
+    <div className="text-sm text-gray-600">{`${Math.round((confidence || 0) * 100)}%`}</div>
+  </div>
+));
+
 const NoImageDisplay = React.memo(({ message = "การแสดงผลภาพถ่ายมีปัญหา" }) => (
   <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-gray-300 h-64 w-full">
     <PiImageBroken className="text-gray-400 text-5xl mb-2" />
@@ -298,7 +331,6 @@ const CandidateShow = () => {
                 }
               }
 
-              // สร้าง map ของ similarity จากผลการค้นหา (ถ้ามี) เพื่อรวมกับรายละเอียด
               const similarityMap = new Map();
               if (Array.isArray(similarResults)) {
                 similarResults.forEach(r => {
@@ -345,6 +377,32 @@ const CandidateShow = () => {
           }
         } catch (err) {
           setSimilarNarcoticIds([]);
+        }
+      })();
+    }
+
+    else if (cookieDt === 'gun') {
+      (async () => {
+        try {
+          const resp = await classifyFirearmBrand(chosenVectorImage);
+          console.log('[CandidateShow] classifyFirearmBrand response:', resp);
+
+          // set brand list for rendering
+          const top3 = Array.isArray(resp?.brand_top3) ? resp.brand_top3 : [];
+          setBrandData(top3);
+
+          // optionally set candidates to allow selection UI reuse
+          const flatCandidates = top3.map((b, i) => ({
+            label: b.label,
+            confidence: b.confidence ?? 0,
+            brandName: b.label,
+            modelName: '',
+            index: i
+          }));
+          setCandidates(flatCandidates);
+          setDetectionType('Gun');
+        } catch (err) {
+          console.error('[CandidateShow] classifyFirearmBrand error:', err);
         }
       })();
     }
@@ -491,7 +549,7 @@ const CandidateShow = () => {
         confidence: 0,
         exhibit: { category: 'ไม่ทราบชนิด', subcategory: 'unknown', type: 'unknown', classification: 'unidentified' }
       };
-    } else if (detectionType === 'Gun') {
+    } else if (cookieDt === 'gun') {
       if (selected.isUnknownWeapon) {
         result = {
           exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_GUN,
@@ -604,7 +662,7 @@ const CandidateShow = () => {
         <ImagePreview
           imageUrl={imageUrl}
           onClick={() => setFullScreen(true)}
-          typeTag={detectionType === 'Gun' ? '🔫 อาวุธปืน' : detectionType === 'Drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}
+          typeTag={cookieDt === 'gun' ? '🔫 อาวุธปืน' : cookieDt === 'drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}
           getHeightClass={getImageHeight}
         />
       </div>
@@ -624,12 +682,20 @@ const CandidateShow = () => {
               </p>
             </div>
           </div>
-        ) : detectionType === 'Gun' ? (
-          <>
-            <div className="p-4 text-center text-gray-500">
-              ฟีเจอร์แสดงผลอาวุธปืนถูกปิดชั่วคราว (disabled)
-            </div>
-          </>
+        ) : cookieDt === 'gun' ? (
+          <div className="space-y-3">
+            {brandData && brandData.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {brandData.map((b, idx) => (
+                  <BrandCard key={`brand-${idx}`} label={b.label} confidence={b.confidence} />
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                ยังไม่มีผลยี่ห้อ — กรุณาลองใหม่หรือรอการประมวลผล
+              </div>
+            )}
+          </div>
          ) : (
           <div className={`space-y-3`}>
             {candidates.length > 0 ? (
@@ -710,7 +776,7 @@ const CandidateShow = () => {
           </button>
           <img src={imageUrl} alt="Full Screen" className={`max-w-full max-h-[80vh] object-contain mb-4 px-4`} />
           <div className={`px-3 py-1 bg-black/70 text-white rounded-full text-sm`}>
-            {detectionType === 'Gun' ? '🔫 อาวุธปืน' : detectionType === 'Drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}
+            {cookieDt === 'gun' ? '🔫 อาวุธปืน' : cookieDt === 'drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}
           </div>
         </div>
       )}
