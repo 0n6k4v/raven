@@ -253,10 +253,7 @@ const GunBrandPanel = React.memo(({
   const brandName = brand.name || brand.label || '';
   const modelList = Array.isArray(models) && models.length > 0 ? models : (brand.models || []);
 
-  // DB candidates that belong to this brand (case-insensitive)
-  const brandDbCandidates = firearmReady
-    ? (Array.isArray(dbCandidates) ? dbCandidates.filter(d => String(d.brandName || '').toLowerCase() === String(brandName).toLowerCase()) : [])
-    : [];
+  // note: models in brand are expected to already include example_images, normalized and foundInDb flags
 
   return (
     <div key={`brand-${brandIdx}`} className="border border-gray-300 rounded-lg overflow-hidden">
@@ -275,50 +272,34 @@ const GunBrandPanel = React.memo(({
       </div>
 
       {expanded && modelList.length > 0 && (
-        <div className="bg-white divide-y divide-gray-100">
+        <div className="bg-white divide-y divide-gray-100 p-3 space-y-2">
           {modelList.map((model, modelIdx) => {
             const modelName = model.name || model.label || '';
             const candidateIndex = candidates.findIndex(
               c => String(c.brandName || '').toLowerCase() === String(brandName).toLowerCase() &&
                    String(c.modelName || '').toLowerCase() === String(modelName).toLowerCase()
             );
-            const referenceImage = getModelImage ? getModelImage(brandName, modelName) : '';
+            const cand = {
+              label: `${brandName} ${modelName}`.trim(),
+              confidence: model.confidence ?? 0,
+              brandName,
+              modelName,
+              example_images: model.example_images || '',
+              exhibit_id: model.exhibit_id || null,
+              normalized: model.normalized || '',
+              notFoundInDb: model.foundInDb === false
+            };
             return (
-              <div
-                key={`model-${brandIdx}-${modelIdx}`}
-                className={`p-4 flex items-center justify-between ${selectedIndex === candidateIndex ? 'bg-red-50' : ''}`}
-                onClick={() => onSelect(candidateIndex)}
-              >
-                <div className="flex-1 flex items-center">
-                  {isLoadingImages ? (
-                    <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                    </div>
-                  ) : referenceImage ? (
-                    <img
-                      src={referenceImage}
-                      alt={`${brandName} ${modelName}`}
-                      className="w-14 h-14 object-contain rounded-lg mr-3 flex-shrink-0 border border-gray-300"
-                      onError={(e) => { e.target.onerror = null; e.target.src = ''; }}
-                    />
-                  ) : (
-                    <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 border border-gray-300">
-                      <PiImageBroken className="text-gray-400 text-xl" />
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="font-medium">{modelName}</div>
-                    <div className={`text-sm text-gray-500`}>
-                      ความมั่นใจ: {formatConfidence(model.confidence)}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedIndex === candidateIndex && (
-                  <div className="w-6 h-6 rounded-full bg-[#990000] flex items-center justify-center ml-2 flex-shrink-0">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
+              <div key={`model-${brandIdx}-${modelIdx}`}>
+                <FirearmCandidateCard
+                  candidate={cand}
+                  selected={selectedIndex !== undefined && candidates[selectedIndex] && candidates[selectedIndex].normalized === cand.normalized}
+                  onClick={() => {
+                    if (candidateIndex !== -1) onSelect(candidateIndex);
+                  }}
+                />
+                {model.foundInDb === false && (
+                  <div className="text-xs text-gray-500 mt-1 ml-1">* ไม่พบในฐานข้อมูล</div>
                 )}
               </div>
             );
@@ -326,23 +307,6 @@ const GunBrandPanel = React.memo(({
         </div>
       )}
 
-      {expanded && brandDbCandidates.length > 0 && (
-        <div className="bg-white divide-y divide-gray-100 p-3">
-          <div className="space-y-2">
-            {brandDbCandidates.map((cand, i) => (
-              <FirearmCandidateCard
-                key={`db-${brandIdx}-${i}-${cand.normalized || i}`}
-                candidate={cand}
-                selected={selectedIndex !== undefined && candidates[selectedIndex] && candidates[selectedIndex].normalized === cand.normalized}
-                onClick={() => {
-                  const overallIndex = candidates.findIndex(c => c.normalized === cand.normalized);
-                  if (overallIndex !== -1) onSelect(overallIndex);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
@@ -383,30 +347,55 @@ const FirearmCandidateCard = React.memo(({ candidate, selected = false, onClick 
   </div>
 ));
 
+// --- ADD: Skeleton card used while waiting API responses ---
+const SkeletonCandidateCard = React.memo(() => (
+  <div className="p-4 border border-gray-200 rounded-lg flex items-start animate-pulse">
+    <div className="mr-3 flex-shrink-0">
+      <div className="w-16 h-16 bg-gray-200 rounded-lg" />
+    </div>
+    <div className="flex-1 space-y-2 py-1">
+      <div className="h-4 bg-gray-200 rounded w-3/4" />
+      <div className="h-3 bg-gray-200 rounded w-1/4" />
+    </div>
+  </div>
+));
 // ==================== MAIN COMPONENTS ====================
 const CandidateShow = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const narcoticApiService = new NarcoticApiService();
   // const { isMobile, isDesktop, isTablet } = useDevice();
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [imageUrl, setImageUrl] = useState('');
-  const [vectorImage, setVectorImage] = useState('');
-  const [fromCamera, setFromCamera] = useState(false);
-  const [sourcePath, setSourcePath] = useState('');
-  const [expandedBrands, setExpandedBrands] = useState({});
-  const [brandData, setBrandData] = useState([]);
-  const [isUnknownObject, setIsUnknownObject] = useState(false);
-  const [fullScreen, setFullScreen] = useState(false);
-
-  const [candidates, setCandidates] = useState([]);
-  const [detectionType, setDetectionType] = useState('');
-  const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
-  const [dbFirearmCandidates, setDbFirearmCandidates] = useState([]);
-  const [firearmLoading, setFirearmLoading] = useState(false);
-  const [firearmReady, setFirearmReady] = useState(false);
-  const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
+  // compute cookie/detection type early so state initializers can use it and avoid initial flash
   const cookieDt = (readCookie('detectionType') || '').toLowerCase();
+
+  // initialize loading flags based on whether we have input (location.state) and detectionType
+  // this ensures Skeleton is shown immediately on first render when processing will start
+   const [selectedIndex, setSelectedIndex] = useState(0);
+   const [imageUrl, setImageUrl] = useState('');
+   const [vectorImage, setVectorImage] = useState('');
+   const [fromCamera, setFromCamera] = useState(false);
+   const [sourcePath, setSourcePath] = useState('');
+   const [expandedBrands, setExpandedBrands] = useState({});
+   const [brandData, setBrandData] = useState([]);
+   const [isUnknownObject, setIsUnknownObject] = useState(false);
+   const [fullScreen, setFullScreen] = useState(false);
+ 
+   const [candidates, setCandidates] = useState([]);
+   const [detectionType, setDetectionType] = useState('');
+   const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
+   const [dbFirearmCandidates, setDbFirearmCandidates] = useState([]);
+   const [firearmLoading, setFirearmLoading] = useState(() => !!(location?.state && cookieDt === 'gun'));
+   const [firearmReady, setFirearmReady] = useState(false);
+   const [drugLoading, setDrugLoading] = useState(() => !!(location?.state && (cookieDt === 'drug' || cookieDt === 'packagedrug')));
+   const [drugReady, setDrugReady] = useState(false);
+   const candidatesCount = useMemo(() => Array.isArray(candidates) ? candidates.length : 0, [candidates]);
+
+  // show header/list skeleton until the relevant detection APIs are fully done
+  const resultsLoading = useMemo(() => {
+    if (cookieDt === 'gun') return !!firearmLoading;
+    if (cookieDt === 'drug' || cookieDt === 'packagedrug') return !!drugLoading;
+    return false;
+  }, [cookieDt, firearmLoading, drugLoading]);
 
   useEffect(() => {
     if (!location.state) return;
@@ -439,69 +428,40 @@ const CandidateShow = () => {
           const imgRefVector = payload?.vector_base64;
           if (imgRefVector) {
             try {
-              const similarResults = await narcoticApiService.findSimilarNarcoticsWithBase64(imgRefVector);
-              const narcoticIds = Array.isArray(similarResults)
-                ? similarResults.map(r => r?.narcotic_id).filter(id => id !== undefined && id !== null)
-                : [];
-              setSimilarNarcoticIds(narcoticIds);
-              
-              let narcoticDetails = [];
-              if (narcoticIds.length > 0) {
-                try {
-                  narcoticDetails = await Promise.all(
-                    narcoticIds.map(id => narcoticApiService.fetchNarcoticById(id).catch(() => null))
-                  );
-                } catch {
-                  narcoticDetails = [];
-                }
-              }
-
-              const similarityMap = new Map();
-              if (Array.isArray(similarResults)) {
-                similarResults.forEach(r => {
-                  if (r?.narcotic_id != null) similarityMap.set(r.narcotic_id, r.similarity ?? 0);
-                });
-              }
-
-              const formattedCandidates = (narcoticDetails || []).filter(Boolean).map(detail => {
-                const firstExampleUrl = Array.isArray(detail.example_images) && detail.example_images.length > 0
-                   ?detail.example_images[0]?.image_url || ''
-                  : '';
-                return {
-                  label: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
-                  displayName: detail.characteristics || detail.drug_type || `ยาเสพติด ${detail.id}`,
-                  confidence: similarityMap.get(detail.id) ?? 0,
-                  narcotic_id: detail.id,
-                  drug_type: detail.drug_type || '',
-                  drug_category: detail.drug_category || '',
-                  characteristics: detail.characteristics || '',
-                  similarity: similarityMap.get(detail.id) ?? 0,
-                  example_images: firstExampleUrl,
-                };
-              });
-
-              formattedCandidates.push({
-                label: 'ยาเสพติดประเภทไม่ทราบชนิด',
-                displayName: 'ยาเสพติดประเภทไม่ทราบชนิด',
-                confidence: 0,
-                isUnknownDrug: true,
-                characteristics: 'ไม่ทราบอัตลักษณ์',
-                exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_DRUG,
-                drug_type: 'ไม่ทราบชนิด',
-                drug_category: 'ไม่ทราบประเภท',
-                example_images: ''
-              });
-
-              setDetectionType('Drug');
-              setCandidates(formattedCandidates);
+              setDrugLoading(true);
+              setDrugReady(false);
+               const similarResults = await narcoticApiService.findSimilarNarcoticsWithBase64(imgRefVector);
+               const narcoticIds = Array.isArray(similarResults)
+                 ? similarResults.map(r => r?.narcotic_id).filter(id => id !== undefined && id !== null)
+                 : [];
+               setSimilarNarcoticIds(narcoticIds);
+               
+               let narcoticDetails = [];
+               if (narcoticIds.length > 0) {
+                 try {
+                   narcoticDetails = await Promise.all(
+                     narcoticIds.map(id => narcoticApiService.fetchNarcoticById(id).catch(() => null))
+                   );
+                 } catch {
+                   narcoticDetails = [];
+                 }
+               }
+              setDrugLoading(false);
+              setDrugReady(true);
             } catch (apiErr) {
               setSimilarNarcoticIds([]);
+              setDrugLoading(false);
+              setDrugReady(true);
             }
           } else {
             setSimilarNarcoticIds([]);
+            setDrugLoading(false);
+            setDrugReady(true);
           }
         } catch (err) {
           setSimilarNarcoticIds([]);
+          setDrugLoading(false);
+          setDrugReady(true);
         }
       })();
     }
@@ -509,57 +469,90 @@ const CandidateShow = () => {
     else if (cookieDt === 'gun') {
       (async () => {
         try {
-          const resp = await classifyFirearmBrand(chosenVectorImage);
-          console.log('[CandidateShow] classifyFirearmBrand response:', resp);
-          const top3 = Array.isArray(resp?.brand_top3) ? resp.brand_top3 : [];
-          setBrandData(top3);
+          // เริ่มแสดง Skeleton ตั้งแต่ก่อนเรียก API ตัวแรก
+              // ensure flags set (safe even if already true)
+              setFirearmLoading(true);
+              setFirearmReady(false);
+            const resp = await classifyFirearmBrand(chosenVectorImage);
+           console.log('[CandidateShow] classifyFirearmBrand response:', resp);
+           const top3 = Array.isArray(resp?.brand_top3) ? resp.brand_top3 : [];
+           setBrandData(top3);
 
-          const flatCandidates = top3.map((b, i) => ({
-            label: b.label,
-            confidence: b.confidence ?? 0,
-            brandName: b.label,
-            modelName: '',
-            index: i
-          }));
-          setCandidates(flatCandidates);
-          setDetectionType('Gun');
+           const flatCandidates = top3.map((b, i) => ({
+             label: b.label,
+             confidence: b.confidence ?? 0,
+             brandName: b.label,
+             modelName: '',
+             index: i
+           }));
+           // เพิ่มตัวเลือก Unknown สำหรับปืน แบบเดียวกับยา
+           flatCandidates.push({
+             label: 'อาวุธปืนประเภทไม่ทราบชนิด',
+             confidence: 0,
+             isUnknownWeapon: true,
+             brandName: 'Unknown',
+             modelName: 'Unknown',
+             exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_GUN,
+             example_images: ''
+           });
+           setCandidates(flatCandidates);
+           setDetectionType('Gun');
 
-          if (top3.length > 0 && chosenVectorImage) {
-            const tasks = top3.map(async (b) => {
-              try {
-                const modelResp = await classifyFirearmModel(b.label, chosenVectorImage);
-                console.log(`[CandidateShow] classifyFirearmModel response for "${b.label}":`, modelResp);
+           if (top3.length > 0 && chosenVectorImage) {
+             // show skeleton while performing model classification + DB lookup
+             setFirearmLoading(true);
+             setFirearmReady(false);
+             const tasks = top3.map(async (b) => {
+               try {
+                 const modelResp = await classifyFirearmModel(b.label, chosenVectorImage);
+                 console.log(`[CandidateShow] classifyFirearmModel response for "${b.label}":`, modelResp);
+ 
+                 const normalizeName = (s = '') =>
+                   String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+ 
+                 const modelEntries = Array.isArray(modelResp?.model_top3) ? modelResp.model_top3 : [];
+                 const normalized = modelEntries.map(m => normalizeName(`${b.label}${m.label}`));
+ 
+                 if (normalized.length === 0 && modelResp?.selected_model) {
+                   normalized.push(normalizeName(`${b.label}${modelResp.selected_model}`));
+                 }
+ 
+                 console.log(`[CandidateShow] normalized names for brand "${b.label}":`, normalized);
+ 
+                 return { brand: b.label, ok: true, resp: modelResp, normalized };
+               } catch (err) {
+                 console.error(`[CandidateShow] classifyFirearmModel error for "${b.label}":`, err);
+                 return { brand: b.label, ok: false, error: err };
+               }
+             });
+ 
+             const results = await Promise.allSettled(tasks);
+             try {
+               // ผนวกความมั่นใจของ model จากผล classifyFirearmModel เข้าใน brandData
+               const modelMap = new Map();
+               results.forEach(r => {
+                 if (r.status === 'fulfilled' && r.value?.resp) {
+                   const resp = r.value.resp;
+                   if (Array.isArray(resp.model_top3) && resp.model_top3.length > 0) {
+                     modelMap.set(r.value.brand, resp.model_top3.map(m => ({ name: m.label, confidence: m.confidence ?? 0 })));
+                   } else if (resp.selected_model) {
+                     modelMap.set(r.value.brand, [{ name: resp.selected_model, confidence: 0 }]);
+                   }
+                 }
+               });
 
-                const normalizeName = (s = '') =>
-                  String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                const modelEntries = Array.isArray(modelResp?.model_top3) ? modelResp.model_top3 : [];
-                const normalized = modelEntries.map(m => normalizeName(`${b.label}${m.label}`));
-
-                if (normalized.length === 0 && modelResp?.selected_model) {
-                  normalized.push(normalizeName(`${b.label}${modelResp.selected_model}`));
-                }
-
-                console.log(`[CandidateShow] normalized names for brand "${b.label}":`, normalized);
-
-                return { brand: b.label, ok: true, resp: modelResp, normalized };
-              } catch (err) {
-                console.error(`[CandidateShow] classifyFirearmModel error for "${b.label}":`, err);
-                return { brand: b.label, ok: false, error: err };
-              }
-            });
-
-            const results = await Promise.allSettled(tasks);
-            try {
+               // เตรียมชื่อ normalized ทั้งหมดเพื่อค้นหาใน DB
+               const normalizeName = (s = '') =>
+                 String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
               const allNormalized = results
                 .filter(r => r.status === 'fulfilled' && Array.isArray(r.value?.normalized))
                 .flatMap(r => r.value.normalized);
 
+              // ถ้ามี normalized ให้ไปค้นหา DB เพื่อดึงรูป/ข้อมูลตัวอย่าง
+              let normalizedFetches = [];
               if (allNormalized.length > 0) {
                 setFirearmLoading(true);
                 setFirearmReady(false);
-                setDbFirearmCandidates([]);
-                let normalizedFetches = [];
                 try {
                   normalizedFetches = await Promise.all(
                     allNormalized.map(n =>
@@ -568,61 +561,132 @@ const CandidateShow = () => {
                         .catch(err => ({ normalized: n, error: err?.message || String(err) }))
                     )
                   );
-                  console.log('[CandidateShow] getFirearmByNormalized responses:', normalizedFetches);
-
-                  const firearmCandidates = (normalizedFetches || [])
-                    .filter(item => item && item.resp && !item.error)
-                    .map(item => {
-                      const r = item.resp;
-                      return {
-                        label: `${r.brand || ''} ${r.model || ''}`.trim(),
-                        confidence: 0,
-                        brandName: r.brand || '',
-                        modelName: r.model || '',
-                        exhibit_id: r.exhibit_id ?? r.id ?? null,
-                        example_images: Array.isArray(r.example_images) && r.example_images.length > 0
-                          ? r.example_images[0]?.image_url || ''
-                          : '',
-                        normalized: item.normalized
-                      };
-                    });
-
-                  // store DB-backed firearm candidates separately and mark ready
-                  setDbFirearmCandidates(firearmCandidates);
-
-                  // merge into general candidates so selection/confirm logic still works,
-                  // but UI will only show DB cards after firearmReady === true
-                  if (firearmCandidates.length > 0) {
-                    setCandidates(prev => {
-                      const existing = Array.isArray(prev) ? prev.slice() : [];
-                      const seen = new Set(existing.map(c => c.normalized).filter(Boolean));
-                      const toAdd = firearmCandidates.filter(fc => !seen.has(fc.normalized));
-                      return [...existing, ...toAdd];
-                    });
-                  }
                 } catch (e) {
-                  console.error('[CandidateShow] error mapping firearm responses to candidates:', e);
+                  console.error('[CandidateShow] getFirearmByNormalized batch error:', e);
                 } finally {
                   setFirearmLoading(false);
                   setFirearmReady(true);
                 }
               } else {
-                console.log('[CandidateShow] no normalized names to query getFirearmByNormalized');
-                // nothing to fetch -> mark ready so UI will not hang on loading
-                setDbFirearmCandidates([]);
                 setFirearmLoading(false);
                 setFirearmReady(true);
               }
-            } catch (err) {
-              console.error('[CandidateShow] error calling getFirearmByNormalized:', err);
-            }
-          }
+
+              const dbMap = new Map();
+              (normalizedFetches || []).forEach(item => {
+                if (item && item.resp && !item.error) {
+                  dbMap.set(item.normalized, item.resp);
+                }
+              });
+
+              // สร้าง brandData ใหม่ที่รวม models พร้อม confidence และรูปจาก DB (ถ้ามี)
+              const updatedBrandData = (top3 || []).map(b => {
+                const modelsFromResp = modelMap.get(b.label) || [];
+                const modelsFormatted = modelsFromResp.map(m => {
+                  const normalized = normalizeName(`${b.label}${m.name}`);
+                  const db = dbMap.get(normalized) || null;
+                  const example_images = Array.isArray(db?.example_images) && db.example_images.length > 0
+                    ? db.example_images[0]?.image_url || ''
+                    : '';
+                  return {
+                    name: m.name,
+                    confidence: m.confidence ?? 0,
+                    normalized,
+                    example_images,
+                    exhibit_id: db?.exhibit_id ?? db?.id ?? null,
+                    foundInDb: !!db
+                  };
+                });
+                // ถ้า brand response เดิมมี models ในรูปแบบอื่น ให้รวมด้วย (fallback)
+                if ((!modelsFromResp || modelsFromResp.length === 0) && Array.isArray(b.models)) {
+                  const fb = b.models.map(m => {
+                    const name = m.name || m.label || String(m);
+                    const normalized = normalizeName(`${b.label}${name}`);
+                    const db = dbMap.get(normalized) || null;
+                    const example_images = Array.isArray(db?.example_images) && db.example_images.length > 0
+                      ? db.example_images[0]?.image_url || ''
+                      : '';
+                    return {
+                      name,
+                      confidence: m.confidence ?? 0,
+                      normalized,
+                      example_images,
+                      exhibit_id: db?.exhibit_id ?? db?.id ?? null,
+                      foundInDb: !!db
+                    };
+                  });
+                  return { ...b, models: fb };
+                }
+                return { ...b, models: modelsFormatted };
+              });
+
+              // สร้าง candidates แบบ flat list จาก brandData (ชื่อจาก model, confidence จาก model, รูปจาก DB)
+              const mergedCandidates = (updatedBrandData || []).flatMap(b =>
+                (b.models || []).map(m => ({
+                  label: `${b.label} ${m.name}`.trim(),
+                  confidence: m.confidence ?? 0,
+                  brandName: b.label,
+                  modelName: m.name,
+                  exhibit_id: m.exhibit_id || null,
+                  example_images: m.example_images || '',
+                  normalized: m.normalized || '',
+                  isUnknownWeapon: false,
+                  isUnknown: false,
+                  notFoundInDb: m.foundInDb === false
+                }))
+              );
+              // เพิ่มตัวเลือก Unknown สำหรับปืน หลังรวมข้อมูล model+DB
+              mergedCandidates.push({
+                label: 'อาวุธปืนประเภทไม่ทราบชนิด',
+                confidence: 0,
+                isUnknownWeapon: true,
+                brandName: 'Unknown',
+                modelName: 'Unknown',
+                exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_GUN,
+                example_images: ''
+              });
+
+              // --- เพิ่ม Unknown เป็น brand เพื่อให้แสดงใน BrandPanel ด้วย (จะมี model เดียวชื่อ Unknown) ---
+              const hasUnknownBrand = (updatedBrandData || []).some(b =>
+                String(b.label).includes('ไม่ทราบชนิด') || String(b.label).toLowerCase().includes('unknown')
+              );
+              if (!hasUnknownBrand) {
+                updatedBrandData.push({
+                  label: 'อาวุธปืนประเภทไม่ทราบชนิด',
+                  confidence: 0,
+                  models: [{
+                    name: 'Unknown',
+                    confidence: 0,
+                    normalized: '',
+                    example_images: '',
+                    exhibit_id: UNKNOWN_EXHIBIT_IDS.UNKNOWN_GUN,
+                    foundInDb: false
+                  }]
+                });
+              }
+ 
+              setBrandData(updatedBrandData);
+              setDbFirearmCandidates([]); // no separate DB list needed now
+              setCandidates(mergedCandidates);
+              // finished loading -> hide skeleton and show results
+              setFirearmLoading(false);
+              setFirearmReady(true);
+             } catch (err) {
+               console.error('[CandidateShow] error merging model+db results:', err);
+              // ensure loading state cleared on error as well
+              setFirearmLoading(false);
+              setFirearmReady(true);
+             }
+           }
         } catch (err) {
           console.error('[CandidateShow] classifyFirearmBrand error:', err);
-        }
-      })();
-    }
-  }, [location.state]);
+          // clear loading so UI stops showing indefinite skeleton; mark ready to allow user interaction
+          setFirearmLoading(false);
+          setFirearmReady(true);
+         }
+       })();
+     }
+   }, [location.state]);
 
   const handleGoBack = useCallback(() => {
     navigate(-1);
@@ -637,6 +701,11 @@ const CandidateShow = () => {
     setSelectedIndex(index);
   }, [candidates, detectionType]);
 
+  // single unknown-gun candidate (show as model-level entry, no brand panel)
+  const unknownGunCandidate = useMemo(() => {
+    return (Array.isArray(candidates) ? candidates.find(c => c.isUnknownWeapon) : null) || null;
+  }, [candidates]);
+ 
   const handleConfirm = useCallback(async () => {
     if (candidates.length === 0) return;
     const selected = candidates[selectedIndex];
@@ -770,9 +839,15 @@ const CandidateShow = () => {
       </div>
 
       <div className={`flex-1 p-4 overflow-y-auto`}>
-        <h2 className={`text-lg mb-3`}>
-          ผลการตรวจพบ <span className="font-semibold text-red-800">{candidatesCount}</span> รายการ
-        </h2>
+        {resultsLoading ? (
+          <div className="mb-3 flex items-center space-x-3" aria-hidden="true">
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-48" />
+          </div>
+        ) : (
+          <h2 className={`text-lg mb-3`}>
+            ผลการตรวจพบ <span className="font-semibold text-red-800">{candidatesCount}</span> รายการ
+          </h2>
+        )}
 
         {isUnknownObject ? (
           <div className={`p-6 bg-gray-50 border border-gray-300 rounded-lg flex flex-col items-center justify-center space-y-3`}>
@@ -787,63 +862,83 @@ const CandidateShow = () => {
         ) : cookieDt === 'gun' ? (
           <div className="space-y-3">
             {firearmLoading ? (
-              <div className="p-4 text-center text-gray-500">กำลังประมวลผลผลยี่ห้อและค้นหาจากฐานข้อมูล...</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => <SkeletonCandidateCard key={`s-gun-${i}`} />)}
+              </div>
             ) : firearmReady ? (
-              brandData && brandData.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {brandData.map((b, idx) => (
-                    <GunBrandPanel
-                      key={`brand-${idx}`}
-                      brand={{ name: b.label, confidence: b.confidence, models: b.models || [] }}
-                      brandIdx={idx}
-                      expanded={!!expandedBrands[b.label]}
-                      toggle={(name) => toggleBrand(name)}
-                      models={b.models || []}
-                      getModelImage={() => ''}
-                      isLoadingImages={false}
-                      selectedIndex={selectedIndex}
-                      candidates={candidates}
-                      onSelect={(i) => handleSelectCandidate(i)}
-                      dbCandidates={dbFirearmCandidates}
-                      firearmReady={firearmReady}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อที่ชัดเจน</div>
-              )
-            ) : (
-              <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อ — กรุณาลองใหม่หรือรอการประมวลผล</div>
-            )}
-          </div>
-         ) : (
-          <div className={`space-y-3`}>
-            {candidates.length > 0 ? (
-              candidates.map((candidate, index) => {
-                return (
-                  <div
-                    key={`${candidate.label}-${index}`}
-                    className={`p-4 border border-gray-300 rounded-lg flex items-start ${selectedIndex === index ? 'border-[#990000] bg-red-50' : ''}`}
-                    onClick={() => setSelectedIndex(index)}
-                  >
-                    {(candidate.narcotic_id && candidate.example_images) ? (
-                      <div className="mr-3 flex-shrink-0">
-                        <img
-                          src={candidate.example_images}
-                          alt={candidate.label}
-                          className="w-16 h-16 object-contain rounded-lg border border-gray-300"
-                          onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}
-                        />
-                      </div>
-                    ) : false && !candidate.isUnknownDrug ? (
-                      <div className="mr-3 flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                      </div>
-                    ) : !candidate.isUnknownDrug ? (
-                      <div className="mr-3 flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-300">
-                        <PiImageBroken className="text-gray-400 text-xl" />
-                      </div>
-                    ) : null}
+               brandData && brandData.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {brandData.map((b, idx) => (
+                     <GunBrandPanel
+                       key={`brand-${idx}`}
+                       brand={{ name: b.label, confidence: b.confidence, models: b.models || [] }}
+                       brandIdx={idx}
+                       expanded={!!expandedBrands[b.label]}
+                       toggle={(name) => toggleBrand(name)}
+                       models={b.models || []}
+                       getModelImage={() => ''}
+                       isLoadingImages={false}
+                       selectedIndex={selectedIndex}
+                       candidates={candidates}
+                       onSelect={(i) => handleSelectCandidate(i)}
+                       dbCandidates={dbFirearmCandidates}
+                       firearmReady={firearmReady}
+                     />
+                   ))}
+
+                   {/* show unknown-gun as a model-level card (no brand panel) */}
+                   {unknownGunCandidate && (
+                     <div>
+                       <FirearmCandidateCard
+                         candidate={unknownGunCandidate}
+                         selected={selectedIndex !== undefined && candidates[selectedIndex] && candidates[selectedIndex].isUnknownWeapon}
+                         onClick={() => {
+                           const idx = candidates.findIndex(c => c.isUnknownWeapon);
+                           if (idx !== -1) handleSelectCandidate(idx);
+                         }}
+                       />
+                     </div>
+                   )}
+                 </div>
+               ) : (
+                 <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อที่ชัดเจน</div>
+               )
+             ) : (
+               <div className="p-4 text-center text-gray-500">ยังไม่มีผลยี่ห้อ — กรุณาลองใหม่หรือรอการประมวลผล</div>
+             )}
+           </div>
+          ) : (
+           <div className={`space-y-3`}>
+            {drugLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => <SkeletonCandidateCard key={`s-drug-${i}`} />)}
+              </div>
+            ) : (candidates.length > 0) ? (
+               candidates.map((candidate, index) => {
+                 return (
+                   <div
+                     key={`${candidate.label}-${index}`}
+                     className={`p-4 border border-gray-300 rounded-lg flex items-start ${selectedIndex === index ? 'border-[#990000] bg-red-50' : ''}`}
+                     onClick={() => setSelectedIndex(index)}
+                   >
+                     {(candidate.narcotic_id && candidate.example_images) ? (
+                       <div className="mr-3 flex-shrink-0">
+                         <img
+                           src={candidate.example_images}
+                           alt={candidate.label}
+                           className="w-16 h-16 object-contain rounded-lg border border-gray-300"
+                           onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/64?text=No+Image"; }}
+                         />
+                       </div>
+                     ) : false && !candidate.isUnknownDrug ? (
+                       <div className="mr-3 flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                         <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                       </div>
+                     ) : !candidate.isUnknownDrug ? (
+                       <div className="mr-3 flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-300">
+                         <PiImageBroken className="text-gray-400 text-xl" />
+                       </div>
+                     ) : null}
 
                     <div className="flex-1">
                       {!candidate.isUnknownDrug ? (
@@ -882,8 +977,12 @@ const CandidateShow = () => {
       <div className={`p-4 border-t border-gray-300 bg-white shrink-0`}>
         <button
           onClick={handleConfirm}
-          disabled={candidates.length === 0}
-          className={`w-full py-4 rounded-lg ${candidates.length > 0 ? 'bg-[#990000] text-white' : 'bg-gray-200 text-gray-500'} font-medium`}
+          // disable until candidates exist AND current detection's APIs are finished
+          disabled={
+            candidates.length === 0 ||
+            (cookieDt === 'gun' ? !firearmReady : (cookieDt === 'drug' || cookieDt === 'packagedrug') ? !drugReady : false)
+          }
+          className={`w-full py-4 rounded-lg ${(candidates.length > 0 && (cookieDt === 'gun' ? firearmReady : (cookieDt === 'drug' || cookieDt === 'packagedrug') ? drugReady : true)) ? 'bg-[#990000] text-white' : 'bg-gray-200 text-gray-500'} font-medium`}
         >
           {isUnknownObject ? 'ยืนยันวัตถุไม่ทราบชนิด' : 'ยืนยันการเลือก'}
         </button>
