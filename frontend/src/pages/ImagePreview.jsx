@@ -53,6 +53,25 @@ const dataUrlToBlob = async (dataUrl) => {
   return res.blob();
 };
 
+// ==================== SERVICES ====================
+const submitImageService = async ({ blob, signal }) => {
+  const formData = new FormData();
+  formData.append('image', blob, 'image.jpg');
+
+  const response = await fetch(`${BASE_URL}/object-classify`, {
+    method: 'POST',
+    body: formData,
+    signal
+  });
+
+  if (!response.ok) {
+    const err = new Error('Network response was not ok');
+    err.status = response.status;
+    throw err;
+  }
+  return response.json();
+};
+
 // ==================== CUSTOM HOOKS ====================
 const useImagePreviewLogic = () => {
   const location = useLocation();
@@ -89,7 +108,7 @@ const useImagePreviewLogic = () => {
       setMode(state.mode || null);
       setResolution(state.resolution || '');
       setFromCamera(Boolean(state.fromCamera));
-      setFromUpload(Boolean(state.uploadFromCameraPage));
+      setFromUpload(Boolean(state.uploadFromCamera));
       setViewMode(state.viewMode || 'contain');
     } else {
       navigate('/home', { replace: true });
@@ -157,30 +176,14 @@ const useImagePreviewLogic = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('image', blob, 'image.jpg');
-
     abortControllerRef.current = new AbortController();
     const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), SUBMIT_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`${BASE_URL}/object-classify`, {
-        method: 'POST',
-        body: formData,
-        signal: abortControllerRef.current.signal
-      });
-
+      const result = await submitImageService({ blob, signal: abortControllerRef.current.signal });
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        console.error('Analysis request failed', response.status, response.statusText);
-        navigateToUnknownObject();
-        setIsProcessing(false);
-        return;
-      }
-
-      const result = await response.json();
-
+      // Extract cropped image safely
       try {
         if (Array.isArray(result.objects) && result.objects.length) {
           const drugObj = result.objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug');
@@ -192,8 +195,9 @@ const useImagePreviewLogic = () => {
         console.warn('Failed to extract cropped image from response', e);
       }
 
+      // set cookie for detection type (best-effort)
       try {
-        const detectionType = result.objects[0]?.detection_type || '';
+        const detectionType = result.objects?.[0]?.detection_type || result.detectionType || '';
         document.cookie = `detectionType=${encodeURIComponent(detectionType)}; path=/; max-age=${60 * 60}`;
       } catch (cookieErr) {
         console.warn('Failed to set detectionType cookie', cookieErr);
@@ -206,122 +210,6 @@ const useImagePreviewLogic = () => {
         return;
       }
 
-      if (result.detectionType === 'firearm' && Array.isArray(result.detected_objects)) {
-        const brands = {};
-        const gunClasses = ['BigGun', 'Pistol', 'Revolver'];
-
-        result.detected_objects.forEach(detection => {
-          if (gunClasses.includes(detection.class) && Array.isArray(detection.brand_top3)) {
-            const limited = detection.brand_top3.slice(0, 3);
-            limited.forEach(brand => {
-              if (brand.confidence > 0) {
-                if (!brands[brand.label]) {
-                  brands[brand.label] = { name: brand.label, confidence: brand.confidence, models: [] };
-                }
-                if (Array.isArray(detection.model_top3) && detection.brand_top3[0]?.label === brand.label) {
-                  detection.model_top3.slice(0, 3).forEach(model => {
-                    if (model.confidence > 0) {
-                      brands[brand.label].models.push({
-                        name: model.label,
-                        confidence: model.confidence,
-                        brandName: brand.label
-                      });
-                    }
-                  });
-                }
-              }
-            });
-          }
-        });
-
-        const brandArray = Object.values(brands)
-          .filter(b => b.models.length > 0)
-          .sort((a, b) => b.confidence - a.confidence)
-          .slice(0, 3);
-
-        result.brandData = brandArray;
-
-        const flatCandidates = [];
-        brandArray.forEach(brand => {
-          brand.models.forEach(model => {
-            flatCandidates.push({
-              label: `${brand.name} ${model.name}`,
-              confidence: model.confidence,
-              brandName: brand.name,
-              modelName: model.name
-            });
-          });
-        });
-
-        flatCandidates.push({
-          label: 'อาวุธปืนไม่ทราบชนิด',
-          confidence: 0,
-          brandName: 'Unknown',
-          modelName: 'Unknown',
-          isUnknownWeapon: true
-        });
-
-        result.candidates = flatCandidates;
-      }
-
-      else if (result.detectionType === 'narcotic' && Array.isArray(result.detected_objects)) {
-        const drugCandidates = [];
-        for (const detection of result.detected_objects) {
-          if (detection.class !== 'Drug') continue;
-
-          if (Array.isArray(detection.similar_narcotics) && detection.similar_narcotics.length > 0) {
-            detection.similar_narcotics.forEach(n => {
-              drugCandidates.push({
-                label: n.characteristics || n.name || 'ยาเสพติดไม่ทราบลักษณะ',
-                displayName: n.characteristics || n.name || 'ยาเสพติดไม่ทราบลักษณะ',
-                confidence: n.similarity || detection.confidence || 0,
-                narcotic_id: n.narcotic_id,
-                drug_type: n.drug_type || 'ไม่ทราบชนิด',
-                drug_category: n.drug_category || 'ไม่ทราบประเภท',
-                characteristics: n.characteristics || 'ไม่ทราบอัตลักษณ์',
-                similarity: n.similarity || 0,
-                source: 'backend_search'
-              });
-            });
-          } else if (detection.vector_base64) {
-            drugCandidates.push({
-              label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-              displayName: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-              confidence: detection.confidence || 0,
-              drug_type: detection.drug_type || 'ไม่ทราบชนิด',
-              drug_category: 'ยาเสพติดไม่ทราบประเภท',
-              characteristics: detection.drug_type || 'ไม่ทราบอัตลักษณ์',
-              vector_base64: detection.vector_base64,
-              source: 'ai_detection'
-            });
-          } else {
-            drugCandidates.push({
-              label: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-              displayName: detection.drug_type !== 'Unknown' ? detection.drug_type : 'ยาเสพติดไม่ทราบลักษณะ',
-              confidence: detection.confidence || 0,
-              drug_type: detection.drug_type || 'ไม่ทราบชนิด',
-              drug_category: 'ยาเสพติดไม่ทราบประเภท',
-              characteristics: detection.drug_type || 'ไม่ทราบอัตลักษณ์',
-              source: 'basic_detection'
-            });
-          }
-        }
-
-        drugCandidates.push({
-          label: 'ยาเสพติดประเภทไม่ทราบชนิด',
-          displayName: 'ยาเสพติดประเภทไม่ทราบชนิด',
-          confidence: 0,
-          isUnknownDrug: true,
-          characteristics: 'ไม่ทราบอัตลักษณ์',
-          exhibit_id: 94,
-          drug_type: 'ไม่ทราบชนิด',
-          drug_category: 'ไม่ทราบประเภท',
-          source: 'manual_option'
-        });
-
-        result.drugCandidates = drugCandidates;
-      }
-
       navigateToCandidateShow(result, imageData);
     } catch (err) {
       console.error('Submit failed', err);
@@ -331,6 +219,7 @@ const useImagePreviewLogic = () => {
       navigateToUnknownObject();
     } finally {
       setIsProcessing(false);
+      clearTimeout();
       if (abortControllerRef.current) {
         abortControllerRef.current = null;
       }
@@ -365,72 +254,144 @@ const useImagePreviewLogic = () => {
   };
 };
 
-// ==================== PRESENTATIONAL / PERFORMANCE ====================
+// ==================== PRESENTATIONAL / SMALL COMPONENTS ====================
+const ErrorBanner = React.memo(({ error, className = '' }) => {
+  if (!error) return null;
+  return (
+    <div className={className}>
+      <div className="bg-red-500 text-white p-3 rounded-lg text-center">{error}</div>
+    </div>
+  );
+});
+
+const MobileHeader = React.memo(({ fromCamera, onBack, resolution }) => (
+  <div className="relative p-4 flex justify-start items-center bg-white">
+    <button
+      onClick={onBack}
+      className="p-2 rounded-full hover:bg-gray-800/50 transition-colors"
+      aria-label={fromCamera ? 'Retake photo' : 'Go back'}
+    >
+      <ArrowLeft className="w-6 h-6 text-black" />
+    </button>
+    <span className="text-black font-normal ml-2">ตรวจสอบภาพ</span>
+    {resolution && <span className="ml-auto text-xs text-gray-400">{resolution}</span>}
+  </div>
+));
+
+const MobileImageBlock = React.memo(({ title, src, alt, tutorial }) => (
+  <div className="flex flex-col bg-white rounded-lg shadow-lg p-3 m-4 mb-0">
+    <span className="text-gray-500 text-xl mb-2">{title}</span>
+    <div className="flex justify-center items-center mb-4 h-auto overflow-y-auto">
+      <img src={src} alt={alt} className="border-2 border-dashed border-red-800 px-4 py-3 w-full object-contain rounded-lg" />
+    </div>
+    {tutorial && (
+      <>
+        <span className="ml-auto text-xs text-gray-400">{tutorial.description}</span>
+        <ul className="list-disc text-xs pl-5 mt-2 text-gray-400">
+          {tutorial.bullets.map((b, i) => <li key={i} className="mb-1">{b}</li>)}
+        </ul>
+      </>
+    )}
+  </div>
+));
+
+const MobileFooter = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera }) => (
+  <div className="p-6 bg-gray-900 space-y-4 w-full flex flex-col">
+    <button
+      onClick={onSubmit}
+      disabled={isProcessing}
+      className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
+      aria-busy={isProcessing}
+      aria-label="Submit image for analysis"
+    >
+      <Send className="w-5 h-5" />
+      <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
+    </button>
+
+    <button
+      onClick={onRetake}
+      disabled={isProcessing}
+      className="w-full py-4 bg-gray-800 hover:bg-gray-700 rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors"
+      aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
+    >
+      <RotateCcw className="w-5 h-5" />
+      <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
+    </button>
+  </div>
+));
+
+const DesktopHeader = React.memo(({ onBack, fromCamera, resolution }) => (
+  <div className="p-4 flex justify-start items-center bg-black">
+    <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-800/50 transition-colors" aria-label={fromCamera ? 'Retake photo' : 'Go back'}>
+      <ArrowLeft className="w-6 h-6 text-white" />
+    </button>
+    <span className="text-white font-medium text-xl ml-4">ตรวจสอบภาพ</span>
+    {resolution && <span className="ml-auto text-sm text-gray-400">{resolution}</span>}
+  </div>
+));
+
+const DesktopBody = React.memo(({ imageData, viewMode, mode, fromCamera }) => (
+  <div className="w-8/12 bg-black flex items-center justify-center p-4 overflow-hidden">
+    <div className="relative h-full w-full flex items-center justify-center">
+      <img src={imageData} alt="Preview" className={`max-h-full max-w-full object-${viewMode} border border-gray-800`} />
+      {mode && !fromCamera && (
+        <div className="absolute top-4 right-4">
+          <span className="px-4 py-2 rounded-full bg-black/50 text-white">{mode === 'ยาเสพติด' ? '🔍 ตรวจจับยาเสพติด' : '🔍 ตรวจจับอาวุธปืน'}</span>
+        </div>
+      )}
+    </div>
+  </div>
+));
+
+const DesktopSidebar = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera }) => (
+  <div className="w-4/12 bg-gray-900 p-6 flex flex-col">
+    <div className="flex-1" />
+    <div className="space-y-4">
+      <button
+        onClick={onSubmit}
+        disabled={isProcessing}
+        className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
+        aria-busy={isProcessing}
+        aria-label="Submit image for analysis"
+      >
+        <Send className="w-5 h-5" />
+        <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
+      </button>
+
+      <button
+        onClick={onRetake}
+        disabled={isProcessing}
+        className="w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors"
+        aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
+      >
+        <RotateCcw className="w-5 h-5" />
+        <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
+      </button>
+    </div>
+  </div>
+));
+
+// ==================== COMPOSITE PRESENTATIONALS ====================
 const MobilePreview = React.memo(function MobilePreview({
-  imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, onSubmit, Tutorial
+  imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, onSubmit, tutorial
 }) {
   return (
     <div className="bg-slate-100 fixed inset-0 flex flex-col h-screen justify-between" role="main" aria-label="Image preview mobile">
-      <div className="relative p-4 flex justify-start items-center bg-white">
-        <button
-          onClick={handleRetakeOrBack}
-          className="p-2 rounded-full hover:bg-gray-800/50 transition-colors"
-          aria-label={fromCamera ? 'Retake photo' : 'Go back'}
-        >
-          <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
-        <span className="text-black font-normal ml-2">ตรวจสอบภาพ</span>
-        {resolution && <span className="ml-auto text-xs text-gray-400">{resolution}</span>}
-      </div>
+      <MobileHeader fromCamera={fromCamera} onBack={handleRetakeOrBack} resolution={resolution} />
 
       <div className="flex-1 overflow-y-auto">
         {error && (
           <div className="absolute left-0 right-0 mx-auto w-full max-w-md px-4">
-            <div className="bg-red-500 text-white p-3 rounded-lg text-center">{error}</div>
+            <ErrorBanner error={error} />
           </div>
         )}
 
-        <div className="flex flex-col bg-white rounded-lg shadow-lg p-3 m-4 mb-0">
-          <span className="text-gray-500 text-xl mb-2">ภาพที่จะทำการวิเคราะห์</span>
-          <div className="flex justify-center items-center mb-4 h-auto overflow-y-auto">
-            <img src={imageData} alt="Preview" className="border-2 border-dashed border-red-800 px-4 py-3 w-full object-contain rounded-lg" />
-          </div>
-        </div>
-
-        <div className="flex flex-col bg-white rounded-lg shadow-lg p-3 m-4 mb-0">
-          <span className="text-gray-500 text-xl mb-2">ภาพตัวอย่าง</span>
-          <div className="flex justify-center items-center mb-4 h-auto overflow-y-auto">
-            <img src={Tutorial.image} alt="Tutorial example" className="border-2 border-gray-300 px-4 py-3 w-full object-contain rounded-lg" />
-          </div>
-          <span className="ml-auto text-xs text-gray-400">{Tutorial.description}</span>
-          <ul className="list-disc text-xs pl-5 mt-2 text-gray-400">
-            {Tutorial.bullets.map((b, i) => <li key={i} className="mb-1">{b}</li>)}
-          </ul>
-        </div>
+        <MobileImageBlock title="ภาพที่จะทำการวิเคราะห์" src={imageData} alt="Preview" />
+        <div className="mt-2" />
+        <MobileImageBlock title="ภาพตัวอย่าง" src={tutorial.image} alt="Tutorial example" tutorial={tutorial} />
       </div>
 
-      <div className="p-6 bg-gray-900 space-y-4 w-full flex flex-col">
-        <button
-          onClick={onSubmit}
-          disabled={isProcessing}
-          className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
-          aria-busy={isProcessing}
-          aria-label="Submit image for analysis"
-        >
-          <Send className="w-5 h-5" />
-          <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
-        </button>
-
-        <button
-          onClick={handleRetakeOrBack}
-          disabled={isProcessing}
-          className="w-full py-4 bg-gray-800 hover:bg-gray-700 rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors"
-          aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
-        >
-          <RotateCcw className="w-5 h-5" />
-          <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
-        </button>
-      </div>
+      <MobileFooter isProcessing={isProcessing} onSubmit={onSubmit} onRetake={handleRetakeOrBack} fromCamera={fromCamera} />
     </div>
   );
 });
@@ -440,56 +401,16 @@ const DesktopPreview = React.memo(function DesktopPreview({
 }) {
   return (
     <div className="fixed inset-0 bg-gray-900 flex flex-col h-screen" role="main" aria-label="Image preview desktop">
-      <div className="p-4 flex justify-start items-center bg-black">
-        <button onClick={handleRetakeOrBack} className="p-2 rounded-full hover:bg-gray-800/50 transition-colors" aria-label={fromCamera ? 'Retake photo' : 'Go back'}>
-          <ArrowLeft className="w-6 h-6 text-white" />
-        </button>
-        <span className="text-white font-medium text-xl ml-4">ตรวจสอบภาพ</span>
-        {resolution && <span className="ml-auto text-sm text-gray-400">{resolution}</span>}
-      </div>
+      <DesktopHeader onBack={handleRetakeOrBack} fromCamera={fromCamera} resolution={resolution} />
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-8/12 bg-black flex items-center justify-center p-4 overflow-hidden">
-          <div className="relative h-full w-full flex items-center justify-center">
-            <img src={imageData} alt="Preview" className={`max-h-full max-w-full object-${viewMode} border border-gray-800`} />
-            {mode && !fromCamera && (
-              <div className="absolute top-4 right-4">
-                <span className="px-4 py-2 rounded-full bg-black/50 text-white">{mode === 'ยาเสพติด' ? '🔍 ตรวจจับยาเสพติด' : '🔍 ตรวจจับอาวุธปืน'}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="w-4/12 bg-gray-900 p-6 flex flex-col">
-          <div className="flex-1" />
-          <div className="space-y-4">
-            <button
-              onClick={onSubmit}
-              disabled={isProcessing}
-              className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
-              aria-busy={isProcessing}
-              aria-label="Submit image for analysis"
-            >
-              <Send className="w-5 h-5" />
-              <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
-            </button>
-
-            <button
-              onClick={handleRetakeOrBack}
-              disabled={isProcessing}
-              className="w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors"
-              aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
-            >
-              <RotateCcw className="w-5 h-5" />
-              <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
-            </button>
-          </div>
-        </div>
+        <DesktopBody imageData={imageData} viewMode={viewMode} mode={mode} fromCamera={fromCamera} />
+        <DesktopSidebar isProcessing={isProcessing} onSubmit={onSubmit} onRetake={handleRetakeOrBack} fromCamera={fromCamera} />
       </div>
 
       {error && (
         <div className="absolute bottom-20 left-0 right-0 mx-auto w-full max-w-md">
-          <div className="bg-red-500 text-white p-3 rounded-lg text-center">{error}</div>
+          <ErrorBanner error={error} />
         </div>
       )}
     </div>
@@ -536,7 +457,7 @@ const ImagePreview = () => {
   return isDesktop ? (
     <DesktopPreview {...commonProps} />
   ) : (
-    <MobilePreview {...commonProps} Tutorial={Tutorial} />
+    <MobilePreview {...commonProps} tutorial={Tutorial} />
   );
 };
 export default ImagePreview;

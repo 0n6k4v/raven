@@ -416,12 +416,13 @@ function useDrugPipeline(vectorImage, narcoticApiService, onCandidatesReady) {
           narcoticDetails = await Promise.all(narcoticIds.map(id => narcoticApiService.fetchNarcoticById(id).catch(() => null)));
         }
         if (!mounted) return;
+        
         // build candidates from narcoticDetails
         const built = (narcoticDetails || []).filter(Boolean).map((d, i) => ({
-          label: d.name || d.displayName || `รายการ ${i + 1}`,
-          displayName: d.name || d.displayName || '',
+          label: d.characteristics || `รายการ ${i + 1}`,
+          displayName: d.characteristics || '',
           narcotic_id: d.id || null,
-          example_images: d.example_image || '',
+          example_images: d.example_images[0].image_url || '',
           similarity: similarResults?.[i]?.similarity ?? 0,
           confidence: similarResults?.[i]?.similarity ?? 0
         }));
@@ -725,7 +726,12 @@ const CandidateShow = () => {
       </div>
 
       <div className="p-4 border-b border-gray-300 shrink-0">
-        <ImagePreview imageUrl={imageUrl} onClick={() => setFullScreen(true)} typeTag={cookieDt === 'gun' ? '🔫 อาวุธปืน' : cookieDt === 'drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'} getHeightClass={getImageHeight} />
+        <ImagePreview
+          imageUrl={imageUrl}
+          onClick={() => setFullScreen(true)}
+          typeTag={cookieDt === 'gun' ? '🔫 อาวุธปืน' : (cookieDt === 'drug' || cookieDt === 'packagedrug') ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}
+          getHeightClass={getImageHeight}
+        />
       </div>
 
       <div className={`flex-1 p-4 overflow-y-auto`}>
@@ -837,7 +843,7 @@ const CandidateShow = () => {
         <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50" role="dialog" aria-modal="true">
           <button className={`absolute top-4 right-4 text-white text-3xl p-2 bg-gray-800 rounded-full`} onClick={() => setFullScreen(false)} aria-label="Close"><IoClose /></button>
           <img src={imageUrl} alt="Full Screen" className={`max-w-full max-h-[80vh] object-contain mb-4 px-4`} />
-          <div className={`px-3 py-1 bg-black/70 text-white rounded-full text-sm`}>{cookieDt === 'gun' ? '🔫 อาวุธปืน' : cookieDt === 'drug' ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}</div>
+          <div className={`px-3 py-1 bg-black/70 text-white rounded-full text-sm`}>{cookieDt === 'gun' ? '🔫 อาวุธปืน' : (cookieDt === 'drug' || cookieDt === 'packagedrug') ? '💊 ยาเสพติด' : '❓ วัตถุพยานที่ไม่รู้จัก'}</div>
         </div>
       )}
     </div>

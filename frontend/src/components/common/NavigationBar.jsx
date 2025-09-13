@@ -378,14 +378,21 @@ const Navigation = memo(function Navigation() {
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          console.log("Preview image:", event.target.result);
+          navigate("/imagePreview", {
+            state: {
+              imageData: event.target.result,
+              sourcePath: "/home",
+              fromCamera: false,
+              uploadFromCameraPage: false
+            },
+          });
         };
         reader.readAsDataURL(file);
       }
     };
     input.click();
     closeBottomSheet();
-  }, [closeBottomSheet]);
+  }, [closeBottomSheet, navigate]);
 
   const handleNavClick = useCallback(
     (e, path, id) => {
