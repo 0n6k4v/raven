@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-// import { useDevice } from '../context/DeviceContext'; // removed
 import TabBar from '../components/EvidenceProfile/TabBar';
 import BottomBar from '../components/EvidenceProfile/BottomBar';
-import GunBasicInformation from '../components/EvidenceProfile/GunProfile';
-import DrugBasicInformation from '../components/EvidenceProfile/DrugProfile';
+import FirearmBasicInformation from '../components/EvidenceProfile/FirearmBasicInformation';
+import NarcoticBasicInformation from '../components/EvidenceProfile/NarcoticBasicInformation';
 import Gallery from '../components/EvidenceProfile/Gallery';
 import History from '../components/EvidenceProfile/History';
 import Map from '../components/EvidenceProfile/Map';
@@ -127,49 +126,106 @@ const useEvidenceProfile = (location) => {
   }, []);
 
   // Fetch drug details
+  const lastDrugFetchRef = useRef(null);
+  const drugFetchControllerRef = useRef(null);
+
   const fetchDrugDetails = useCallback(async (narcoticId) => {
     if (!narcoticId) return false;
+
+    // guard: avoid re-fetching the same narcotic id repeatedly
+    if (lastDrugFetchRef.current === narcoticId) {
+      // already fetched (or fetching) this id — skip
+      return true;
+    }
+
+    // abort previous in-flight drug fetch (if any)
+    try {
+      if (drugFetchControllerRef.current) {
+        drugFetchControllerRef.current.abort();
+      }
+    } catch (e) {
+      /* ignore */
+    }
+
+    const controller = new AbortController();
+    drugFetchControllerRef.current = controller;
+    lastDrugFetchRef.current = narcoticId;
+
     setIsLoading(true);
     setApiError(null);
     try {
-      const resp = await fetch(`${BASE_URL}/narcotics/${narcoticId}`);
+      const resp = await fetch(`${BASE_URL}/narcotics/${narcoticId}`, { signal: controller.signal });
       if (!resp.ok) throw new Error(`Failed to fetch narcotic ${narcoticId}: ${resp.status}`);
       const drugData = await resp.json();
-      setEvidence(prev => ({
-        ...prev,
-        details: drugData,
-        result: {
-          ...prev.result,
-          exhibit_id: drugData.exhibit_id || drugData.exhibit?.id || prev.result?.exhibit_id,
-          prediction: prev.result?.prediction,
-          confidence: prev.result?.confidence,
-          narcotic_id: prev.result?.narcotic_id,
-          similarity: prev.result?.similarity
+
+      setEvidence(prev => {
+        const existingId = prev?.details?.id;
+        if (existingId && Number(existingId) === Number(drugData.id)) {
+          return {
+            ...prev,
+            result: {
+              ...prev.result,
+              exhibit_id: drugData.exhibit_id || drugData.exhibit?.id || prev.result?.exhibit_id,
+            }
+          };
         }
-      }));
+
+        return {
+          ...prev,
+          details: drugData,
+          result: {
+            ...prev.result,
+            exhibit_id: drugData.exhibit_id || drugData.exhibit?.id || prev.result?.exhibit_id,
+            prediction: prev.result?.prediction,
+            confidence: prev.result?.confidence,
+            narcotic_id: prev.result?.narcotic_id,
+            similarity: prev.result?.similarity
+          }
+        };
+      });
+
       return true;
     } catch (error) {
+      // if aborted, do not treat as real error
+      if (error.name === 'AbortError') {
+        // clear controller but keep lastDrugFetchRef to prevent immediate retry loops
+        drugFetchControllerRef.current = null;
+        return false;
+      }
       console.error('fetchDrugDetails error:', error);
       setApiError(error?.message || 'Unknown error');
+      // clear guard so future attempts possible
+      lastDrugFetchRef.current = null;
       return false;
     } finally {
       setIsLoading(false);
+      // clear controller when finished
+      drugFetchControllerRef.current = null;
     }
   }, []);
 
-  // Side-effect: when result/type changes, trigger fetches accordingly
   useEffect(() => {
     const result = evidence?.result;
     if (!result) return;
 
-    if (evidence.type === 'Gun' && result.brandName && result.modelName) {
-      fetchFirearmDetails(result.brandName, result.modelName);
-    } else if (evidence.type === 'Drug' && result.narcotic_id) {
-      fetchDrugDetails(result.narcotic_id);
-    }
-  }, [evidence?.result, evidence?.type, fetchFirearmDetails, fetchDrugDetails]);
+    const narcoticId = result?.narcotic_id;
+    const brandName = result?.brandName;
+    const modelName = result?.modelName;
 
-  // Persist minimal references only
+    if (evidence.type === 'Gun' && brandName && modelName) {
+      fetchFirearmDetails(brandName, modelName);
+    } else if (evidence.type === 'Drug' && narcoticId) {
+      fetchDrugDetails(narcoticId);
+    }
+  }, [
+    evidence?.type,
+    evidence?.result?.brandName,
+    evidence?.result?.modelName,
+    evidence?.result?.narcotic_id,
+    fetchFirearmDetails,
+    fetchDrugDetails
+  ]);
+
   useEffect(() => {
     if (!evidence) return;
     try {
@@ -249,7 +305,7 @@ const EvidenceProfile = () => {
     switch (evidenceType) {
       case 'Gun':
         return (
-          <GunBasicInformation
+          <FirearmBasicInformation
             evidence={evidence.details}
             analysisResult={evidence.result}
             isLoading={isLoading}
@@ -259,7 +315,7 @@ const EvidenceProfile = () => {
         );
       case 'Drug':
         return (
-          <DrugBasicInformation
+          <NarcoticBasicInformation
             evidence={evidence.details}
             analysisResult={evidence.result}
             isMobile={isMobile}
@@ -272,6 +328,7 @@ const EvidenceProfile = () => {
             <p>ไม่สามารถระบุชนิดของวัตถุพยานนี้ได้</p>
             {evidence.imageUrl && (
               <div className="mt-4">
+                
                 <img src={evidence.imageUrl} alt="Unknown evidence" className={`${isMobile ? 'w-full max-h-48' : 'w-full max-h-64'} object-contain rounded-lg`} />
               </div>
             )}
@@ -287,7 +344,8 @@ const EvidenceProfile = () => {
       case 0:
         return renderBasicInfo();
       case 1:
-        return <Gallery evidence={evidence?.details} isMobile={isMobile} />;
+        // pass down top-level evidence.imageUrl (if present) so Gallery can show user-supplied image
+        return <Gallery evidence={evidence?.details} firearmInfo={evidence?.details} userImage={evidence?.imageUrl} isMobile={isMobile} />;
       case 2:
         return <History evidence={evidence?.details} isMobile={isMobile} />;
       case 3:
@@ -296,10 +354,6 @@ const EvidenceProfile = () => {
         return null;
     }
   };
-
-  useEffect(() => {
-    console.log('=== DEBUG EvidenceProfile ===', { locationState: location.state, evidence });
-  }, [evidence, location.state]);
 
   if (!evidence) {
     return (

@@ -19,6 +19,7 @@ const ImagePreview = lazy(() => import('./pages/ImagePreview'))
 const CandidateShow = lazy(() => import('./pages/CandidateShow'))
 const History = lazy(() => import('./pages/History'))
 const EvidenceHistoryProfile = lazy(() => import('./pages/EvidenceHistoryProfile'))
+const EvidenceProfile = lazy(() => import('./pages/EvidenceProfile'))
 
 const App = memo(function App() {
   return (
@@ -69,7 +70,10 @@ const App = memo(function App() {
           }
         >
           {/* Evidence Profile */}
-          {/* <Route path='/evidenceProfile' element={<EvidenceProfile />} /> */}
+          <Route path='/evidenceProfile' element={<EvidenceProfile />} />
+          <Route path='/evidenceProfile/gallery' element={<EvidenceProfile />} />
+          <Route path='/evidenceProfile/history' element={<EvidenceProfile />} />
+          <Route path='/evidenceProfile/map' element={<EvidenceProfile />} />
 
           {/* Narcotics Admin */}
           <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
