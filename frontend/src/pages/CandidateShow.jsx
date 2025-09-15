@@ -56,50 +56,31 @@ const formatConfidence = (confidence, isUnknown) => {
   return `${Math.round(confidence * 100)}%`;
 };
 
-const normalizeSearchKey = (brandName = '', modelName = '') =>
-  (brandName + modelName).toLowerCase().replace(/[^a-z0-9]/g, '');
-
 const findExhibitByBrandModel = async (brandName, modelName) => {
   try {
-    const res = await fetch(`${BASE_URL}/exhibits`);
-    if (!res.ok) {
-      console.error('Failed to fetch exhibits:', res.status, res.statusText);
-      return null;
-    }
-    const exhibits = await res.json();
-    if (Array.isArray(exhibits)) {
-      const normalized = normalizeSearchKey(brandName, modelName);
-      return exhibits.find(exhibit =>
-        exhibit.firearm &&
-        exhibit.category === 'อาวุธปืน' &&
-        exhibit.firearm.normalized_name === normalized
-      );
-    }
-  } catch (error) {
-    console.error('Error finding exhibit:', error);
+    const normalized = (brandName + modelName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!normalized) return null;
+    const url = new URL(`${BASE_URL}/firearm/get-by-normalized`);
+    url.searchParams.set('normalized_name', normalized);
+    const res = await fetch(url.toString());
+    if (!res.ok) return null;
+    const firearm = await res.json();
+    return firearm ? { id: firearm.exhibit_id ?? null, firearm } : null;
+  } catch (err) {
+    console.error('findExhibitByBrandModel error', err);
+    return null;
   }
-  return null;
 };
 
-const findExhibitByNarcoticId = async (narcoticId) => {
+const findExhibitByNarcoticId = async (narcoticId, narcoticApiService) => {
   try {
-    const res = await fetch(`${BASE_URL}/exhibits`);
-    if (!res.ok) {
-      console.error('Failed to fetch exhibits:', res.status, res.statusText);
-      return null;
-    }
-    const exhibits = await res.json();
-    if (Array.isArray(exhibits)) {
-      return exhibits.find(exhibit =>
-        exhibit.category === 'ยาเสพติด' &&
-        exhibit.narcotic &&
-        exhibit.narcotic.id === narcoticId
-      );
-    }
-  } catch (error) {
-    console.error('Error finding exhibit by narcotic ID:', error);
+    if (!narcoticId) return null;
+    const narc = await narcoticApiService.fetchNarcoticById(narcoticId);
+    return narc ? { id: narc.exhibit_id ?? narc.exhibit?.id ?? null, narcotic: narc } : null;
+  } catch (err) {
+    console.error('findExhibitByNarcoticId error', err);
+    return null;
   }
-  return null;
 };
 
 async function getFirearmByNormalized(normalizedName, { signal } = {}) {
@@ -208,14 +189,22 @@ function useInitFromLocation(location) {
   return { cookieDt, imageUrl, vectorImage, fromCamera, sourcePath, isUnknownObject, setIsUnknownObject };
 }
 
-function useFirearmPipeline(vectorImage, initialTopBrands = [], onCandidatesReady) {
+function useFirearmPipeline(vectorImage, initialTopBrands = [], onCandidatesReady, enabled = true) {
   const [brandData, setBrandData] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [firearmLoading, setFirearmLoading] = useState(false);
   const [firearmReady, setFirearmReady] = useState(false);
 
   useEffect(() => {
-    if (!vectorImage) return;
+    if (!vectorImage || !enabled) {
+      setBrandData([]);
+      setCandidates([]);
+      setFirearmLoading(false);
+      setFirearmReady(true);
+      onCandidatesReady && onCandidatesReady([]);
+      return;
+    }
+
     let mounted = true;
     (async () => {
       try {
@@ -378,19 +367,27 @@ function useFirearmPipeline(vectorImage, initialTopBrands = [], onCandidatesRead
       }
     })();
     return () => { mounted = false; };
-  }, [vectorImage]);
+  }, [vectorImage, enabled]); // <-- include enabled
 
   return { brandData, candidates, firearmLoading, firearmReady };
 }
 
-function useDrugPipeline(vectorImage, narcoticApiService, onCandidatesReady) {
+function useDrugPipeline(vectorImage, narcoticApiService, onCandidatesReady, enabled = true) {
   const [drugLoading, setDrugLoading] = useState(false);
   const [drugReady, setDrugReady] = useState(false);
   const [similarNarcoticIds, setSimilarNarcoticIds] = useState([]);
   const [candidates, setCandidates] = useState([]);
 
   useEffect(() => {
-    if (!vectorImage) return;
+    if (!vectorImage || !enabled) {
+      setSimilarNarcoticIds([]);
+      setCandidates([]);
+      setDrugLoading(false);
+      setDrugReady(true);
+      onCandidatesReady && onCandidatesReady([]);
+      return;
+    }
+
     let mounted = true;
     (async () => {
       try {
@@ -445,7 +442,7 @@ function useDrugPipeline(vectorImage, narcoticApiService, onCandidatesReady) {
       }
     })();
     return () => { mounted = false; };
-  }, [vectorImage]);
+  }, [vectorImage, enabled]);
 
   return { drugLoading, drugReady, similarNarcoticIds, candidates };
 }
@@ -593,9 +590,12 @@ const CandidateShow = () => {
   const [expandedBrands, setExpandedBrands] = useState({});
   const [fullScreen, setFullScreen] = useState(false);
 
-  // pipelines
-  const { brandData, candidates: firearmCandidates, firearmLoading, firearmReady } = useFirearmPipeline(vectorImage, [], (cands) => { /* callback */ });
-  const { drugLoading, drugReady, candidates: drugCandidates } = useDrugPipeline(vectorImage, narcoticApiService, (cands) => { /* callback */ });
+  // pipelines: pass enabled flags based on cookieDt
+  const { brandData, candidates: firearmCandidates, firearmLoading, firearmReady } =
+    useFirearmPipeline(vectorImage, [], (cands) => { /* callback */ }, cookieDt === 'gun');
+
+  const { drugLoading, drugReady, candidates: drugCandidates } =
+    useDrugPipeline(vectorImage, narcoticApiService, (cands) => { /* callback */ }, cookieDt === 'drug' || cookieDt === 'packagedrug');
 
   // selected candidate list source depends on cookieDt
   const candidates = useMemo(() => {
@@ -648,7 +648,8 @@ const CandidateShow = () => {
           isUnknown: false
         };
       } else {
-        const matchingExhibit = await findExhibitByBrandModel(selected.brandName, selected.modelName);
+        const matchingExhibitId = selected.exhibit_id ?? null;
+        const matchingExhibit = matchingExhibitId ? { id: matchingExhibitId } : await findExhibitByBrandModel(selected.brandName, selected.modelName);
         result = {
           exhibit_id: matchingExhibit?.firearm?.exhibit_id || null,
           weaponType: selected.label,
@@ -691,7 +692,7 @@ const CandidateShow = () => {
           details: [{ pill_name: 'ยาเสพติดไม่ทราบชนิด', confidence: 0, narcotic_id: null }]
         };
       } else {
-        const drugExhibit = await findExhibitByNarcoticId(selected.narcotic_id);
+        const drugExhibit = await findExhibitByNarcoticId(selected.narcotic_id, narcoticApiService);
         result = {
           exhibit_id: drugExhibit?.id || null,
           prediction: selected.displayName || selected.label,

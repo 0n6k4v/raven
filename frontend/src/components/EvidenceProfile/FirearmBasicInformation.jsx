@@ -14,17 +14,18 @@ const calculateOffset = (percent) => {
   return circumference - (circumference * (percent / 100));
 };
 
-const readAnalysisImage = () => {
-  try {
-    return localStorage.getItem('analysisImage') || null;
-  } catch {
-    return null;
-  }
-};
-
 // ==================== CUSTOM HOOKS ====================
-function useFirearmBasicViewModel(analysisResult) {
-  const imageUrl = useMemo(() => readAnalysisImage(), []);
+function useFirearmBasicViewModel(analysisResult, userImageUrl) {
+  const imageUrl = useMemo(() => {
+    // priority: explicit prop from parent -> localStorage fallback -> null
+    if (userImageUrl) return userImageUrl;
+    try {
+      return localStorage.getItem('analysisImage') || null;
+    } catch {
+      return null;
+    }
+  }, [userImageUrl]);
+
   const confidence = useMemo(() => {
     const raw = analysisResult && typeof analysisResult.confidence === 'number' ? analysisResult.confidence : 0;
     return Math.round(raw * 100);
@@ -90,8 +91,8 @@ const ImageView = React.memo(({ src, alt, maxHeight, onClick }) => {
 ImageView.propTypes = { src: PropTypes.string, alt: PropTypes.string, maxHeight: PropTypes.number, onClick: PropTypes.func };
 
 // ==================== MAIN COMPONENT ====================
-const FirearmBasicInformation = ({ evidence, analysisResult, isLoading, apiError }) => {
-  const { imageUrl, confidence } = useFirearmBasicViewModel(analysisResult);
+const FirearmBasicInformation = ({ evidence, analysisResult, isLoading, apiError, userImageUrl }) => {
+  const { imageUrl, confidence } = useFirearmBasicViewModel(analysisResult, userImageUrl);
   const [showShareNotification, setShowShareNotification] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
 
@@ -257,7 +258,8 @@ FirearmBasicInformation.propTypes = {
   evidence: PropTypes.object,
   analysisResult: PropTypes.object,
   isLoading: PropTypes.bool,
-  apiError: PropTypes.any
+  apiError: PropTypes.any,
+  userImageUrl: PropTypes.string
 };
 
 export default React.memo(FirearmBasicInformation);

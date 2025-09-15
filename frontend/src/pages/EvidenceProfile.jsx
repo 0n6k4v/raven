@@ -11,14 +11,27 @@ import Map from '../components/EvidenceProfile/Map';
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 let inMemoryEvidenceStore = null;
+const UNKNOWN_GUN_EXHIBIT_ID = 93;
 
 // ==================== UTILS ====================
 const normalizeNameForSearch = (brandName, modelName) => {
   if (!brandName && !modelName) return '';
-  const normalizedBrand = brandName ? String(brandName).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-  const normalizedModel = modelName ? String(modelName).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-  return `${normalizedBrand}${normalizedModel}`;
+  const normalize = (s) => (s ? String(s).toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+  return `${normalize(brandName)}${normalize(modelName)}`;
 };
+
+async function getFirearmByNormalized(normalizedName, { signal } = {}) {
+  if (!normalizedName) return null;
+  const url = new URL(`${BASE_URL}/firearm/get-by-normalized`);
+  url.searchParams.set('normalized_name', normalizedName);
+  const res = await fetch(url.toString(), { method: 'GET', signal });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`getFirearmByNormalized failed: ${res.status} ${text}`);
+  }
+  if (res.status === 204) return null;
+  try { return await res.json(); } catch { return null; }
+}
 
 // ==================== CUSTOM HOOK ====================
 const useEvidenceProfile = (location) => {
@@ -64,87 +77,95 @@ const useEvidenceProfile = (location) => {
     return initialData;
   });
 
-  // Fetch firearm details
   const fetchFirearmDetails = useCallback(async (brandName, modelName) => {
     if (!brandName && !modelName) return false;
     setIsLoading(true);
     setApiError(null);
+
+    const normalizedKey = normalizeNameForSearch(brandName, modelName);
+    const controller = new AbortController();
     try {
-      // Special-case unknowns
-      if (brandName === 'Unknown' && modelName === 'Unknown') {
-        const resp = await fetch(`${BASE_URL}/exhibits`);
-        if (!resp.ok) throw new Error(`Failed to fetch exhibits: ${resp.status}`);
-        const exhibits = await resp.json();
-        const unknownWeapon = Array.isArray(exhibits) ? exhibits.find(e => e.id === 21) : null;
-        if (unknownWeapon) {
-          setEvidence(prev => ({
-            ...prev,
-            details: {
-              id: 21,
-              brand: 'Unknown',
-              model: '',
-              type: 'อาวุธปืนประเภทไม่ทราบชนิด',
-              exhibit: { id: 21, category: unknownWeapon.category, subcategory: unknownWeapon.subcategory }
-            }
-          }));
-          return true;
+      if (String(brandName) === 'Unknown' && String(modelName) === 'Unknown') {
+        const resp = await fetch(`${BASE_URL}/exhibits/${UNKNOWN_GUN_EXHIBIT_ID}`, { signal: controller.signal });
+        if (!resp.ok) {
+          if (resp.status === 404) return false;
+          throw new Error(`Failed to fetch exhibit ${UNKNOWN_GUN_EXHIBIT_ID}: ${resp.status}`);
         }
-        return false;
-      }
-
-      const normalizedName = normalizeNameForSearch(brandName, modelName);
-      const resp = await fetch(`${BASE_URL}/exhibits`);
-      if (!resp.ok) throw new Error(`Failed to fetch exhibits: ${resp.status}`);
-      const exhibits = await resp.json();
-      if (!Array.isArray(exhibits)) return false;
-
-      const matchingExhibit = exhibits.find(exhibit =>
-        exhibit.firearm &&
-        exhibit.category === 'อาวุธปืน' &&
-        normalizeNameForSearch(exhibit.firearm.brand, exhibit.firearm.model) === normalizedName
-      );
-
-      if (matchingExhibit) {
+        const unknownExhibit = await resp.json();
+        if (!unknownExhibit) return false;
         setEvidence(prev => ({
           ...prev,
           details: {
-            ...matchingExhibit.firearm,
-            exhibit: { id: matchingExhibit.id, category: matchingExhibit.category, subcategory: matchingExhibit.subcategory },
-            images: matchingExhibit.firearm?.example_images || []
+            id: UNKNOWN_GUN_EXHIBIT_ID,
+            brand: 'Unknown',
+            model: '',
+            type: 'อาวุธปืนประเภทไม่ทราบชนิด',
+            exhibit: { id: unknownExhibit.id, category: unknownExhibit.category, subcategory: unknownExhibit.subcategory }
           }
         }));
         return true;
       }
-      return false;
-    } catch (error) {
-      console.error('fetchFirearmDetails error:', error);
-      setApiError(error?.message || 'Unknown error');
+
+      const firearmResp = await getFirearmByNormalized(normalizedKey, { signal: controller.signal });
+      if (!firearmResp) return false;
+
+      const exhibitId = firearmResp.exhibit_id ?? null;
+      const exhibitMeta = { id: exhibitId, category: undefined, subcategory: undefined };
+
+      if (exhibitId) {
+        const exhibitResp = await fetch(`${BASE_URL}/exhibits/${exhibitId}`, { signal: controller.signal });
+        if (exhibitResp.ok) {
+          try {
+            const exhibitData = await exhibitResp.json();
+            exhibitMeta.category = exhibitData?.category;
+            exhibitMeta.subcategory = exhibitData?.subcategory;
+          } catch {
+          }
+        } else if (exhibitResp.status !== 404) {
+          throw new Error(`Failed to fetch exhibit ${exhibitId}: ${exhibitResp.status}`);
+        }
+      }
+
+      setEvidence(prev => ({
+        ...prev,
+        details: {
+          ...firearmResp,
+          exhibit: exhibitMeta,
+          images: Array.isArray(firearmResp.example_images)
+            ? firearmResp.example_images
+            : (firearmResp.example_images ? [firearmResp.example_images] : [])
+        }
+      }));
+      
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return false;
+      }
+      console.error('fetchFirearmDetails error:', err);
+      setApiError(err?.message || 'Unknown error');
       return false;
     } finally {
       setIsLoading(false);
+      controller.abort();
     }
   }, []);
 
-  // Fetch drug details
   const lastDrugFetchRef = useRef(null);
   const drugFetchControllerRef = useRef(null);
 
   const fetchDrugDetails = useCallback(async (narcoticId) => {
     if (!narcoticId) return false;
 
-    // guard: avoid re-fetching the same narcotic id repeatedly
     if (lastDrugFetchRef.current === narcoticId) {
-      // already fetched (or fetching) this id — skip
       return true;
     }
 
-    // abort previous in-flight drug fetch (if any)
     try {
       if (drugFetchControllerRef.current) {
         drugFetchControllerRef.current.abort();
       }
     } catch (e) {
-      /* ignore */
     }
 
     const controller = new AbortController();
@@ -186,20 +207,16 @@ const useEvidenceProfile = (location) => {
 
       return true;
     } catch (error) {
-      // if aborted, do not treat as real error
       if (error.name === 'AbortError') {
-        // clear controller but keep lastDrugFetchRef to prevent immediate retry loops
         drugFetchControllerRef.current = null;
         return false;
       }
       console.error('fetchDrugDetails error:', error);
       setApiError(error?.message || 'Unknown error');
-      // clear guard so future attempts possible
       lastDrugFetchRef.current = null;
       return false;
     } finally {
       setIsLoading(false);
-      // clear controller when finished
       drugFetchControllerRef.current = null;
     }
   }, []);
@@ -248,7 +265,6 @@ const useEvidenceProfile = (location) => {
     }
   }, [evidence]);
 
-  // Persist minimal details
   useEffect(() => {
     if (!evidence?.details) return;
     try {
@@ -276,11 +292,11 @@ const useEvidenceProfile = (location) => {
   };
 };
 
+
 // ==================== MAIN COMPONENTS ====================
 const EvidenceProfile = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // removed useDevice usage to decouple device context
   const isMobile = false;
   const isTablet = false;
 
@@ -310,6 +326,7 @@ const EvidenceProfile = () => {
             analysisResult={evidence.result}
             isLoading={isLoading}
             apiError={apiError}
+            userImageUrl={evidence?.imageUrl || null}
             isMobile={isMobile}
           />
         );

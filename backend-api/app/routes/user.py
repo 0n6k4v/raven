@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Cookie, Depends, Query
 from typing import Optional
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import User, PaginatedUserResponse, UserResponse
 from app.controllers.auth_controller import get_current_active_user_from_cookie
 from app.controllers.user_controller import get_all_users, get_user_by_user_id
-from app.config.db_config import get_db, get_async_db
+from app.config.db_config import get_async_db
 
 router = APIRouter()
 
 async def get_user(
     access_token: str = Cookie(None),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     return await get_current_active_user_from_cookie(access_token, db)
 

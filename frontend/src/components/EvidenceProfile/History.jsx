@@ -4,7 +4,8 @@ import { PiImageBroken } from "react-icons/pi";
 import { TbHistory } from "react-icons/tb";
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
-import { parseDateBE, formatDateToBE } from '../../utils/dateUtils';
+import { parseDateBE } from '../../utils/dateUtils';
+import useExhibitHistoryData from '../../hooks/api/History/useExhibitHistoryData';
 
 import FilterPopup from "../common/FilterPopup";
 import FilterTags from "../common/FilterTags";
@@ -13,8 +14,6 @@ import ErrorDisplay from "../common/ErrorDisplay";
 import Pagination from "../common/Pagination";
 import HistoryCard from '../History/common/HistoryCard';
 import HistoryTableRow from '../History/common/HistoryTableRow';
-
-// import useExhibitHistoryData from "../../hooks/useExhibitHistoryData";
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -59,34 +58,20 @@ function useHistoryLogic({ evidence, propCurrentUser }) {
   const currentUser = user ?? propCurrentUser;
   const navigate = useNavigate();
 
-  // const {
-  //   data: historyData,
-  //   isLoading,
-  //   error: hookError,
-  //   currentPage,
-  //   rowsPerPage,
-  //   totalPages,
-  //   indexOfFirstItem,
-  //   indexOfLastItem,
-  //   currentItems,
-  //   fetchExhibitHistoryData,
-  //   handlePageChange,
-  //   handleRowsPerPageChange
-  // } = useExhibitHistoryData();
-
-  // useExhibitHistoryData ยังไม่ได้ใช้ — ใส่ fallback ค่าเริ่มต้นเพื่อไม่ให้เกิด ReferenceError
-  const historyData = [];
-  const isLoading = false;
-  const hookError = null;
-  const currentPage = 1;
-  const rowsPerPage = 10;
-  const totalPages = 1;
-  const indexOfFirstItem = 0;
-  const indexOfLastItem = 0;
-  const currentItems = [];
-  const fetchExhibitHistoryData = async () => { /* no-op fallback while hook is disabled */ };
-  const handlePageChange = () => {};
-  const handleRowsPerPageChange = () => {};
+  const {
+    data: historyData,
+    isLoading,
+    error: hookError,
+    currentPage,
+    rowsPerPage,
+    totalPages,
+    indexOfFirstItem,
+    indexOfLastItem,
+    currentItems,
+    fetchExhibitHistoryData,
+    handlePageChange,
+    handleRowsPerPageChange
+  } = useExhibitHistoryData();
 
   const [filters, setFilters] = useState({
     dateRange: null,
@@ -147,12 +132,7 @@ function useHistoryLogic({ evidence, propCurrentUser }) {
     return () => { mounted = false; };
   }, []);
 
-  // -----------------------------------------
-  // NOTE: The following effect used to call fetchExhibitHistoryData based on role & evidence.
-  // Because useExhibitHistoryData is currently disabled, this effect is commented out to
-  // prevent runtime calls to an unavailable API. Re-enable and restore the real hook when ready.
-  // -----------------------------------------
-  /*
+  // decide which exhibit history to fetch depending on role & evidence
   useEffect(() => {
     if (!evidence?.exhibit_id || !currentUser) return;
 
@@ -181,8 +161,7 @@ function useHistoryLogic({ evidence, propCurrentUser }) {
       fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id, userId });
     }
   }, [evidence, currentUser, fetchExhibitHistoryData]);
-  */
-  
+
   // compute filteredData locally (pure)
   const filteredData = useMemo(() => applyFilters(historyData || [], appliedFilters), [historyData, appliedFilters]);
 
@@ -293,7 +272,7 @@ const NoImageDisplay = React.memo(({ message = "ไม่พบรูปภา�
     {!small && (
       <>
         <p className="text-gray-600 text-xs text-center">{message}</p>
-        {subMessage && <p className="text-gray-500 text-xs text-center mt-1">{subMessage}</p>}
+        {subMessage && <p className="text-gray-600 text-xs text-center mt-1">{subMessage}</p>}
       </>
     )}
   </div>
@@ -357,7 +336,7 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-gray-50 p-8 rounded-xl border border-gray-300 max-w-md flex flex-col items-center">
           <TbHistory className="text-gray-500 text-6xl mb-4" />
-          <h2 className="text-xl font-medium text-gray-800 mb-2">{emptyMessage.title}</h2>
+          <h2 className="text-xl font-medium text-gray-900 mb-2">{emptyMessage.title}</h2>
           <p className="text-gray-600 mb-6">{emptyMessage.description}</p>
         </div>
       </div>
@@ -374,7 +353,7 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
         <div className="px-4 sm:px-6 pt-4 flex justify-between items-center mb-4">
           <button
             onClick={() => setIsFilterOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-sm text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#990000]/20"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
             aria-haspopup="dialog"
           >
             <FiFilter size={16} /> ตัวกรอง
@@ -406,21 +385,21 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
         </div>
 
         {filteredData.length > 0 && (
-          <div className="fixed bottom-[74px] left-0 right-0 bg-white p-2 flex flex-col border-t border-b z-20">
+          <div className="fixed bottom-[74px] left-0 right-0 bg-white p-2 flex flex-col border-t border-b border-gray-300 z-20">
             <div className="flex justify-between items-center pt-1">
-              <div className="text-gray-700 text-xs sm:text-sm pl-2">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)} จาก {filteredData.length}</div>
-              <div className="flex items-center text-gray-600 text-xs sm:text-sm">
+              <div className="text-gray-900 text-xs sm:text-sm pl-2">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)} จาก {filteredData.length}</div>
+              <div className="flex items-center text-gray-700 text-xs sm:text-sm">
                 <span className="mr-1 sm:mr-2">แถว:</span>
-                <select value={rowsPerPage} onChange={(e) => handleRowsPerPageChange(Number(e.target.value))} className="bg-transparent border rounded px-1 sm:px-2 py-1 text-gray-600 text-xs sm:text-sm focus:outline-none cursor-pointer" aria-label="Rows per page">
+                <select value={rowsPerPage} onChange={(e) => handleRowsPerPageChange(Number(e.target.value))} className="bg-transparent border rounded px-1 sm:px-2 py-1 text-gray-900 text-xs sm:text-sm focus:outline-none cursor-pointer" aria-label="Rows per page">
                   <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="20">20</option>
                 </select>
               </div>
               <div className="flex items-center gap-1 sm:gap-2 pr-2">
-                <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`p-1 rounded ${currentPage === 1 ? "text-gray-400 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"}`} aria-label="Previous page"><FiChevronLeft size={18} /></button>
-                <span className="font-medium text-xs sm:text-sm text-gray-700">{currentPage}/{totalPages}</span>
-                <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`p-1 rounded ${currentPage === totalPages ? "text-gray-400 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"}`} aria-label="Next page"><FiChevronRight size={18} /></button>
+                <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`p-1 rounded ${currentPage === 1 ? "text-gray-400 cursor-not-allowed" : "text-gray-700 hover:bg-gray-100"}`} aria-label="Previous page"><FiChevronLeft size={18} /></button>
+                <span className="font-medium text-xs sm:text-sm text-gray-900">{currentPage}/{totalPages}</span>
+                <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`p-1 rounded ${currentPage === totalPages ? "text-gray-400 cursor-not-allowed" : "text-gray-700 hover:bg-gray-100"}`} aria-label="Next page"><FiChevronRight size={18} /></button>
               </div>
             </div>
           </div>
@@ -430,13 +409,7 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
       <div className="hidden md:block h-full">
         <div className="h-full w-full flex flex-col overflow-hidden">
           <div className="px-6 pt-4 flex justify-between items-center mb-4 flex-shrink-0">
-            <button
-              onClick={() => setIsFilterOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#990000]/20"
-              aria-haspopup="dialog"
-            >
-              <FiFilter size={18} /> ตัวกรอง
-            </button>
+            <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 px-4 py-2 border rounded bg-white hover:bg-gray-100" aria-haspopup="dialog"><FiFilter size={18} /> ตัวกรอง</button>
           </div>
 
           <FilterPopup
@@ -458,14 +431,14 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
               <div className="flex-grow overflow-auto">
                 <table className="w-full table-fixed border-collapse" role="table" aria-label="History table">
                   <thead>
-                    <tr className="bg-gray-100 sticky top-0 z-10">
-                      <th className="p-3 text-left w-[12%] font-semibold text-gray-700">วัน/เดือน/ปี</th>
-                      <th className="p-3 text-left w-[10%] font-semibold text-gray-700">หมวดหมู่</th>
-                      <th className="p-3 text-left w-[8%] font-semibold text-gray-700">รูปภาพ</th>
-                      <th className="p-3 text-left w-[15%] font-semibold text-gray-700">ชื่อ</th>
-                      <th className="p-3 text-left w-[20%] font-semibold text-gray-700">สถานที่พบ</th>
-                      <th className="p-3 text-left w-[15%] font-semibold text-gray-700">ผู้บันทึก/แก้ไข</th>
-                      <th className="p-3 text-left w-[10%] font-semibold text-gray-700">การจัดการ</th>
+                    <tr className="bg-gray-200 sticky top-0 z-10">
+                      <th className="p-3 text-left w-[12%] font-semibold">วัน/เดือน/ปี</th>
+                      <th className="p-3 text-left w-[10%] font-semibold">หมวดหมู่</th>
+                      <th className="p-3 text-left w-[8%] font-semibold">รูปภาพ</th>
+                      <th className="p-3 text-left w-[15%] font-semibold">ชื่อ</th>
+                      <th className="p-3 text-left w-[20%] font-semibold">สถานที่พบ</th>
+                      <th className="p-3 text-left w-[15%] font-semibold">ผู้บันทึก/แก้ไข</th>
+                      <th className="p-3 text-left w-[10%] font-semibold">การจัดการ</th>
                     </tr>
                   </thead>
 
@@ -477,7 +450,7 @@ const History = ({ evidence, currentUser: propCurrentUser }) => {
                     </tbody>
                   ) : (
                     <tbody>
-                      <tr><td colSpan="7" className="text-center text-gray-500 py-10">ไม่พบข้อมูล</td></tr>
+                      <tr><td colSpan="7" className="text-center text-gray-600 py-10">ไม่พบข้อมูล</td></tr>
                     </tbody>
                   )}
                 </table>

@@ -5,6 +5,8 @@ from typing import List, Optional
 from app.schemas.history_schema import HistoryWithExhibit
 from app.config.db_config import get_async_db
 from app.controllers.history_controller import HistoryController
+from app.controllers.auth_controller import get_current_active_user_from_cookie
+from app.schemas.user_schema import UserInDB
 
 router = APIRouter(tags=["history"])
 
@@ -34,3 +36,23 @@ async def delete_history_endpoint(history_id: int, db: AsyncSession = Depends(ge
         raise HTTPException(status_code=404, detail="History record not found")
     
     return {"message": "History record deleted successfully"}
+
+@router.get(
+  "/history/exhibit/{exhibit_id}/user/{user_id}",
+  response_model=List[HistoryWithExhibit],
+  summary="Get histories for an exhibit filtered by user",
+)
+async def get_histories_by_exhibit_and_user(
+  exhibit_id: int,
+  user_id: str,
+  db: AsyncSession = Depends(get_async_db),
+  current_user: UserInDB = Depends(get_current_active_user_from_cookie),
+) -> List[HistoryWithExhibit]:
+  histories = await history_controller.get_histories_by_exhibit_and_user(
+    db,
+    exhibit_id=exhibit_id,
+    user_id=user_id,
+    requesting_user=current_user
+  )
+
+  return histories

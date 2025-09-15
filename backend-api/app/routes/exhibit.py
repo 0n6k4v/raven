@@ -57,3 +57,11 @@ async def upload_narcotic_image(
         return image
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+
+@router.get("/exhibits/{exhibit_id}", response_model=ExhibitSchema, summary="Get exhibit by id")
+async def get_exhibit_by_id(exhibit_id: int, db: AsyncSession = Depends(get_async_db)):
+    exhibit_controller = ExhibitController(db)
+    exhibit = await exhibit_controller.get_exhibit_by_id(exhibit_id)
+    if not exhibit:
+        raise HTTPException(status_code=404, detail="Exhibit not found")
+    return exhibit

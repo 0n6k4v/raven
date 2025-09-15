@@ -3,8 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'rea
 import 'leaflet/dist/leaflet.css';
 import { Icon, LatLngBounds } from 'leaflet';
 import { useUser } from '../../hooks/useUser';
-// useExhibitHistoryData ยังไม่ได้ใช้งาน / service ยังไม่พร้อม — คอมเมนต์การ import เพื่อป้องกัน error
-// import useExhibitHistoryData from "../../hooks/useExhibitHistoryData";
+import useExhibitHistoryData from '../../hooks/api/History/useExhibitHistoryData';
 
 // ==================== CONSTANTS ====================
 const DEFAULT_CENTER = [13.7563, 100.5018];
@@ -76,16 +75,15 @@ const buildItemsWithCoordinates = (historyData = []) => {
 // ==================== CUSTOM HOOKS ====================
 function useMapLogic(evidence) {
   const [user] = useUser();
-  // เมื่อ hook ไม่ถูกใช้งาน ให้ใช้ fallback ค่าเริ่มต้น (no-op) เพื่อไม่ให้เกิด ReferenceError
-  // หากต้องการเปิดการใช้งาน ให้ยกเลิก comment ด้านล่างและนำการ import กลับมา
-  // const { data: historyData = [], isLoading: historyLoading = false, error: historyError = null, fetchExhibitHistoryData } = useExhibitHistoryData();
-  const historyData = [];
-  const historyLoading = false;
-  const historyError = null;
-  const fetchExhibitHistoryData = async () => {
-    // no-op fallback while hook is disabled
-    return;
-  };
+
+  const {
+    data: historyData = [],
+    isLoading: historyLoading = false,
+    error: historyError = null,
+    fetchExhibitHistoryData,
+    abortFetch
+  } = useExhibitHistoryData();
+
   const [currentLocation, setCurrentLocation] = useState(DEFAULT_CENTER);
   const [isLocLoading, setIsLocLoading] = useState(true);
 
@@ -100,41 +98,30 @@ function useMapLogic(evidence) {
     return () => { mounted = false; };
   }, []);
 
-  // useEffect ที่เรียก fetchExhibitHistoryData ถูกคอมเมนต์ไว้ชั่วคราว
-  // เมื่อต้องการเปิดการใช้งาน ให้ยกเลิก comment และนำ hook กลับมา import
-  /*
   useEffect(() => {
-    if (!evidence?.exhibit_id || !user) return;
-    const userId = user?.user_id || user?.id;
-    const evidenceCategory = evidence?.category || evidence?.exhibit?.category;
+    const exhibitId = evidence?.exhibit_id ?? evidence?.id;
+    if (!exhibitId || !user || !fetchExhibitHistoryData) return;
+
+    const userId = user?.user_id ?? user?.id;
+    const category = evidence?.category ?? evidence?.exhibit?.category;
 
     if (user?.role?.id === 1) {
-      fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id });
-      return;
+      fetchExhibitHistoryData({ exhibitId });
+      return () => abortFetch();
     }
 
     if (user?.role?.id === 2) {
-      if (user?.department === "กลุ่มงานอาวุธปืน") {
-        if (evidenceCategory === "ปืน" || evidenceCategory === "อาวุธปืน") {
-          fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id });
-        } else {
-          fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id, userId });
-        }
-        return;
-      }
-      if (user?.department === "กลุ่มงานยาเสพติด") {
-        if (evidenceCategory === "ยาเสพติด") {
-          fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id });
-        } else {
-          fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id, userId });
-        }
-        return;
-      }
+      const isFirearmDept = user?.department === "กลุ่มงานอาวุธปืน" && (category === "ปืน" || category === "อาวุธปืน");
+      const isNarcoticDept = user?.department === "กลุ่มงานยาเสพติด" && category === "ยาเสพติด";
+      const allowAll = isFirearmDept || isNarcoticDept;
+      fetchExhibitHistoryData(allowAll ? { exhibitId } : { exhibitId, userId });
+      return () => abortFetch();
     }
 
-    if (userId) fetchExhibitHistoryData({ exhibitId: evidence.exhibit_id, userId });
-  }, [evidence, user, fetchExhibitHistoryData]);
-  */
+    if (userId) fetchExhibitHistoryData({ exhibitId, userId });
+
+    return () => abortFetch();
+  }, [evidence, user, fetchExhibitHistoryData, abortFetch]);
 
   const itemsWithCoordinates = useMemo(() => buildItemsWithCoordinates(historyData), [historyData]);
 
@@ -183,6 +170,19 @@ const NoPermissionBox = React.memo(({ message }) => (
 // ==================== MAIN COMPONENT ====================
 const Map = ({ evidence, isMobile = false }) => {
   const { user, itemsWithCoordinates, historyLoading, historyError, currentLocation, isLocLoading } = useMapLogic(evidence);
+  const [overlayTopPx, setOverlayTopPx] = useState(16);
+
+  useEffect(() => {
+    const updateOverlayTop = () => {
+      const nav = document.querySelector('nav[aria-label="Evidence profile tabs"]');
+      const navHeight = nav ? Math.ceil(nav.getBoundingClientRect().height) : 0;
+      setOverlayTopPx(navHeight ? navHeight + 8 : 16);
+    };
+
+    updateOverlayTop();
+    window.addEventListener('resize', updateOverlayTop);
+    return () => window.removeEventListener('resize', updateOverlayTop);
+  }, []);
 
   const hasPermission = useCallback(() => {
     if (!user) return false;
@@ -205,28 +205,28 @@ const Map = ({ evidence, isMobile = false }) => {
 
     return (
       <div className="w-full h-full">
-        <div className="map-container w-full h-full rounded-lg overflow-hidden border border-gray-300">
+        <div className="map-container w-full flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-300">
           {(isLocLoading) ? <LoadingBox /> : <NoPermissionBox message={message} />}
         </div>
       </div>
     );
   }
-
+  
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="map-container w-full flex-grow rounded-lg overflow-hidden border border-gray-300">
-        {(isLocLoading) ? (
-          <LoadingBox />
-        ) : (
-          <MapContainer
-            center={currentLocation}
-            zoom={13}
-            style={{ height: isMobile ? 'calc(100vh - 120px)' : 'calc(100vh - 140px)', width: '100%' }}
-            maxBounds={[[THAILAND_BOUNDS.minLat, THAILAND_BOUNDS.minLng], [THAILAND_BOUNDS.maxLat, THAILAND_BOUNDS.maxLng]]}
-            minZoom={5}
-            zoomControl={false}
-            className="relative w-full h-full"
-          >
+      <div className="map-container w-full flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-300">
+         {(isLocLoading) ? (
+           <LoadingBox />
+         ) : (
+           <MapContainer
+             center={currentLocation}
+             zoom={13}
+             style={{ height: '100%', width: '100%' }}
+             maxBounds={[[THAILAND_BOUNDS.minLat, THAILAND_BOUNDS.minLng], [THAILAND_BOUNDS.maxLat, THAILAND_BOUNDS.maxLng]]}
+             minZoom={5}
+             zoomControl={false}
+             className="relative w-full h-full"
+           >
             <ZoomControl position="bottomright" />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
 
@@ -257,22 +257,31 @@ const Map = ({ evidence, isMobile = false }) => {
 
             <MapBoundsAdjuster markers={itemsWithCoordinates} />
           </MapContainer>
-        )}
+         )}
 
         {historyLoading && (
-          <div className="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow">
+          <div
+            className="absolute left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow"
+            style={{ top: overlayTopPx }}
+          >
             <div className="text-sm text-gray-600">กำลังโหลดประวัติ...</div>
           </div>
         )}
 
         {!historyLoading && itemsWithCoordinates.length > 0 && (
-          <div className="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow">
+          <div
+            className="absolute left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow"
+            style={{ top: overlayTopPx }}
+          >
             <div className="text-sm text-gray-600">พบประวัติ {itemsWithCoordinates.length} รายการ (มีพิกัด)</div>
           </div>
         )}
 
         {!historyLoading && historyError === "empty" && (
-          <div className="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow">
+          <div
+            className="absolute left-4 bg-white bg-opacity-90 px-3 py-2 rounded shadow"
+            style={{ top: overlayTopPx }}
+          >
             <div className="text-sm text-gray-600">ไม่พบประวัติของวัตถุพยานนี้</div>
           </div>
         )}
