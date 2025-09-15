@@ -362,3 +362,16 @@ class HistoryController:
 
         return mapped
 
+    async def get_histories_by_exhibit(
+        self,
+        db: AsyncSession,
+        exhibit_id: int,
+        requesting_user: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        return await self.get_histories_by_exhibit_and_user(
+            db=db,
+            exhibit_id=exhibit_id,
+            user_id=None,
+            requesting_user=requesting_user
+        )
+
