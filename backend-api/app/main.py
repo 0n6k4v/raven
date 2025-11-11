@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import app.models
 from app.routes import ( 
     auth_router, user_router, role_router, 
     province_router, district_router, subdistrict_router, 
@@ -12,18 +11,18 @@ from app.routes import (
 def create_app() -> FastAPI:
     app = FastAPI()
 
-    allowed_origins = [
-        "http://localhost"
+    origins = [
+        "http://localhost",
         "http://frontend",
         "http://localhost:80",
         "http://frontend:80",
         "http://localhost:8080",
-        "http://ai-service:8080"
+        "http://ai-service:8080",
     ]
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allowed_origins,
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
