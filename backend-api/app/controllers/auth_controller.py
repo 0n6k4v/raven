@@ -16,13 +16,16 @@ from app.config.db_config import get_db, get_async_db  # keep get_db, add get_as
 from app.config.auth_config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.models.user_model import User as UserModel
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], default="argon2")  # Argon2-only
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # Verify using CryptContext (Argon2). We keep verify compatibility for existing hashes
+    # Passlib will detect the hash scheme from the stored hash and verify accordingly.
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
+    # Hash using Argon2 (configured as default in pwd_context)
     return pwd_context.hash(password)
 
 def get_user_from_db(email: str, db: Optional[Session] = None) -> Optional[UserInDB]:

@@ -10,7 +10,7 @@ python-multipart
 psycopg2-binary
 cloudinary
 aiofiles
-bcrypt
+argon2-cffi
 pytest
 httpx
 pytest-asyncio

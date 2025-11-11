@@ -2,12 +2,15 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.5 (Debian 17.5-1.pgdg110+1)
--- Dumped by pg_dump version 17.5 (Debian 17.5-1.pgdg110+1)
+\restrict zHNuvWmy8Qp29r9CBTMwmp2gvseQINKXSZgbFxkaHyhwPZmYWb4WBUeOhuYJXDu
+
+-- Dumped from database version 17.6 (Debian 17.6-2.pgdg12+1)
+-- Dumped by pg_dump version 17.6 (Debian 17.6-2.pgdg12+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -57,24 +60,6 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
 
-
---
--- Name: encrypt_password(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.encrypt_password() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.password IS NOT NULL THEN
-    NEW.password := crypt(NEW.password, gen_salt('bf'));
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION public.encrypt_password() OWNER TO postgres;
 
 --
 -- Name: generate_user_code(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -9971,12 +9956,12 @@ COPY public.user_permissions (id, user_id, permission_type, granted, created_at,
 --
 
 COPY public.users (id, user_id, title, firstname, lastname, email, password, profile_image_url, role_id, department, is_active, last_login, created_at, updated_at) FROM stdin;
-1	U00001	นาย	ผู้ใช้งาน	ทั่วไป	user@example.com	$2a$06$WIZnq7L7dKHNR9PkSlrbQuC3xA7qM5hIdVOBL26NE49auGM3Qv11i	\N	3	IT Department	t	2025-05-01 15:17:23.990023	2025-04-29 06:49:09.091073	2025-05-01 15:17:23.99102
-3	U00002	นาย	ผู้ดูแลระบบ	สูงสุด	superadmin@example.com	$2a$06$v.cj6vfQ.7JzEN31/b5NzOdGYLZ1ISvbWAQ6p7x6J2ngRaZ9h.01S	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746328821/firearm_examples/bemqhrk38rvablfv32z1.jpg	1	ผู้ดูแลระบบ	t	2025-04-30 16:29:44.508879	2025-04-30 07:48:05.276152	2025-05-04 03:20:20.34028
-5	U00004	นาย	แอดมิน	กลุ่มงานปืน	admingun@example.com	$2a$06$eXjyWuc2tuQpmqNXKkTjaO.ynAGwfMMLYr6RJedHZwH9b7fu65uxe	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746345353/firearm_examples/hp9yyurdpprkdqoj3dfw.jpg	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-04 07:55:51.385765	2025-05-04 07:55:51.385765
-6	U00006	นางสาว	แอดมิน	กลุ่มงานยา	adminnarcotic@example.com	$2a$06$aO3O2ygjxZ9WBMFr24kor.wYXUzlFpQ5yf/b5oCsA0gAzK3m9La2a	\N	2	กลุ่มงานยาเสพติด	t	\N	2025-05-04 13:45:04.52454	2025-05-04 13:45:04.52454
-7	U00007	นางสาว	ผู้ใช้งาน	สอง	user2@example.com	$2a$06$gpH6mPR0hG.wDB.13pzjB.SELn9Q9mvIS4sSRyxwSTAU6Lr4AgvfC	\N	3	เจ้าหน้าที่หน้างาน	t	\N	2025-05-08 13:44:04.717637	2025-05-08 13:44:04.717637
-8	U00008	นาย	แอดมิน	แอดมิน	sup@example.com	$2a$06$Md.FYegSP8HfSKt3vLwJ1.METv9AKKFW4GrgHSDb7HvnbLSTbGE6W	\N	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-21 10:58:51.10185	2025-05-21 10:58:51.101854
+1	U00001	นาย	ผู้ใช้งาน	ทั่วไป	user@example.com	$argon2id$v=19$m=65536,t=3,p=4$2RYV9Z/HeFu4Vn611OmuiA$jxybpQMDX18V0V2ELU207sotrLInTwAnfxoaaq5Jp3w	\N	3	IT Department	t	2025-05-01 15:17:23.990023	2025-04-29 06:49:09.091073	2025-11-11 08:42:15.494406
+3	U00002	นาย	ผู้ดูแลระบบ	สูงสุด	superadmin@example.com	$argon2id$v=19$m=65536,t=3,p=4$vACo+zP0BP+eTISurf2hXw$/F2O+Du2+evSar4EXyjLuU8HewtLgnr2xAk8E45ccik	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746328821/firearm_examples/bemqhrk38rvablfv32z1.jpg	1	ผู้ดูแลระบบ	t	2025-04-30 16:29:44.508879	2025-04-30 07:48:05.276152	2025-11-11 08:42:25.397225
+5	U00004	นาย	แอดมิน	กลุ่มงานปืน	admingun@example.com	$argon2id$v=19$m=65536,t=3,p=4$EpcEsmUENYCpQDkC84GKBA$SqvenRPdmGsaibg7N8rgYgtSVnUEIQNsxjSCmQrhT7k	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746345353/firearm_examples/hp9yyurdpprkdqoj3dfw.jpg	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-04 07:55:51.385765	2025-11-11 08:42:31.925848
+6	U00006	นางสาว	แอดมิน	กลุ่มงานยา	adminnarcotic@example.com	$argon2id$v=19$m=65536,t=3,p=4$FLkWM6WuNJ3QeKDnQUjIIA$0V4bSkc/NtW9Z20N58kHG7csT6XCc9EnETQE7Twp6JY	\N	2	กลุ่มงานยาเสพติด	t	\N	2025-05-04 13:45:04.52454	2025-11-11 08:42:38.698957
+7	U00007	นางสาว	ผู้ใช้งาน	สอง	user2@example.com	$argon2id$v=19$m=65536,t=3,p=4$Jz+Fu3oZWWJlzJkRrGjZQg$DsUjO/Cz+cJJO6v5zdX5a+ke8a4tHxJwLh2e83PSzPw	\N	3	เจ้าหน้าที่หน้างาน	t	\N	2025-05-08 13:44:04.717637	2025-11-11 08:42:44.532992
+8	U00008	นาย	แอดมิน	แอดมิน	sup@example.com	$argon2id$v=19$m=65536,t=3,p=4$rZvY8aTfh0YPTpX32fvaxw$kH+299RzLSiyaNSbF/T+ut+t4j6S4mzk4Ws5QZrxFBA	\N	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-21 10:58:51.10185	2025-11-11 08:42:50.03201
 \.
 
 
@@ -10384,13 +10369,6 @@ CREATE INDEX idx_cases_subdistrict ON public.cases USING btree (subdistrict);
 
 
 --
--- Name: users encrypt_password_before_insert; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE TRIGGER encrypt_password_before_insert BEFORE INSERT OR UPDATE OF password ON public.users FOR EACH ROW EXECUTE FUNCTION public.encrypt_password();
-
-
---
 -- Name: users set_user_id; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -10640,4 +10618,6 @@ ALTER TABLE ONLY public.users
 --
 -- PostgreSQL database dump complete
 --
+
+\unrestrict zHNuvWmy8Qp29r9CBTMwmp2gvseQINKXSZgbFxkaHyhwPZmYWb4WBUeOhuYJXDu
 

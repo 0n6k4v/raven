@@ -13,7 +13,7 @@ def create_app() -> FastAPI:
     app = FastAPI()
 
     allowed_origins = [
-        "http://localhost",
+        "http://localhost"
         "http://frontend",
         "http://localhost:80",
         "http://frontend:80",
