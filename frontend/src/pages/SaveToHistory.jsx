@@ -316,11 +316,29 @@ function SaveToHistory() {
     setSubdistrictOptions: setGeoSubdistrictOptions
   } = geo;
 
-  // set initial date/time once
+
+  // set initial date/time and auto-fetch location/address on mount (mobile first)
   useEffect(() => {
     const now = new Date();
     setDate(now.toISOString().slice(0, 10));
     setTime(now.toTimeString().slice(0, 5));
+
+    // Mobile: auto-fetch geolocation and address
+    if (window.innerWidth < 768) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setCoordinates({ lat, lng });
+          },
+          (err) => {
+            console.warn('Geolocation error:', err);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+        );
+      }
+    }
   }, []);
 
   // load/store evidence & analysis (unchanged logic but clearer names + safe guards)
@@ -487,7 +505,7 @@ function SaveToHistory() {
       <RecordTabBar />
       <div className='flex flex-1 overflow-auto justify-center items-center bg-gray-50'>
         <div className="flex w-full max-w-6xl mx-auto bg-white ring-1 ring-gray-200 rounded-2xl shadow-sm" style={{ minHeight: 400 }}>
-          <div className="w-full md:w-1/2 pt-8 pr-6 pb-8 pl-8 flex flex-col max-h-[550px]">
+          <div className="w-full pt-8 pr-6 pb-8 pl-8 flex flex-col max-h-[550px]">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">ระบุตำแหน่ง</h2>
             <div className="flex-1 overflow-y-auto">
               {props.loading ? (
@@ -497,11 +515,13 @@ function SaveToHistory() {
               )}
             </div>
           </div>
+          {/*
           <div className="hidden md:block md:w-1/2 pt-8 pr-8 pb-8 pl-4">
             <div className="w-full h-full" style={{ minHeight: 400 }}>
               <RecordMap setCoordinates={setCoordinates} />
             </div>
           </div>
+          */}
         </div>
       </div>
       <RecordBottomBar
