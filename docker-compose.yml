@@ -11,8 +11,6 @@ services:
     ports:
       - "80:80"
     environment:
-      - VITE_SPHERE_API_KEY=${VITE_SPHERE_API_KEY}
-      - VITE_LONGDO_MAP_API_KEY=${VITE_LONGDO_MAP_API_KEY}
       - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend-api

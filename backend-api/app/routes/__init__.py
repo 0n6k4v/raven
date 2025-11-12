@@ -11,3 +11,4 @@ from .inference import router as inference_router
 from .vector import router as vector_router
 from .history import router as history_router
 from .firearm import router as firearm_router
+from .geocode import router as geocode_router

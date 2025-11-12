@@ -9,7 +9,6 @@ const USER_ZOOM = 15;
 const AUTO_SCROLL_EDGE_PX = 50;
 const AUTO_SCROLL_STEP_PX = 10;
 const AUTO_SCROLL_INTERVAL_MS = 50;
-const LONGDO_KEY = import.meta.env.VITE_LONGDO_MAP_API_KEY;
 
 /* ========================= UTILS ========================= */
 const safeParseJson = async (res) => {
@@ -17,16 +16,19 @@ const safeParseJson = async (res) => {
 };
 
 const fetchAddress = async ({ lat, lng, signal }) => {
-  if (!lat || !lng || !LONGDO_KEY) return null;
-  const url = `https://api.longdo.com/map/services/address?lon=${lng}&lat=${lat}&noelevation=1&key=${LONGDO_KEY}`;
+  if (!lat || !lng) return null;
+  const url = `${import.meta.env.VITE_API_URL}/api/geocode/reverse?lat=${lat}&lng=${lng}`;
   try {
     const response = await fetch(url, { signal });
     if (!response.ok) {
-      const body = await safeParseJson(response);
-      const errMsg = body?.message || body?.detail || response.statusText || `HTTP ${response.status}`;
+      const text = await response.text();
+      const errMsg = text || response.statusText || `HTTP ${response.status}`;
       throw new Error(errMsg);
     }
-    return await safeParseJson(response);
+    const json = await safeParseJson(response);
+    if (!json) return null;
+    if (json.ok) return json.data || null;
+    throw new Error(json.message || 'geocode error');
   } catch (err) {
     if (err.name === 'AbortError') return null;
     console.error('fetchAddress error', err);
@@ -70,19 +72,6 @@ function useLeafletMap({ mapContainerRef, onCoordinatesChange }) {
     }
   }, []);
 
-  // reverse geocode helper with abort handling
-  const doReverseGeocode = useCallback(async (lat, lng) => {
-    if (fetchAbortRef.current) {
-      fetchAbortRef.current.abort();
-      fetchAbortRef.current = null;
-    }
-    const ac = new AbortController();
-    fetchAbortRef.current = ac;
-    const data = await fetchAddress({ lat, lng, signal: ac.signal });
-    fetchAbortRef.current = null;
-    return data;
-  }, []);
-
   // initialize map once container is ready
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -99,11 +88,10 @@ function useLeafletMap({ mapContainerRef, onCoordinatesChange }) {
       tileLayer.on('load', () => console.debug('[RecordMap] tilelayer loaded'));
       tileLayer.on('tileerror', (err) => console.warn('[RecordMap] tile error', err));
 
-      // mark map ready when Leaflet reports ready
-      mapRef.current.whenReady(() => {
-        console.debug('[RecordMap] map.whenReady -> ready');
-        setIsInitializing(false);
-      });
+      // Mark map ready immediately when map object is created
+      // Don't wait for all tiles to load - they load asynchronously in background
+      console.debug('[RecordMap] map initialized -> ready');
+      setIsInitializing(false);
 
       // geolocation
       navigator.geolocation.getCurrentPosition(
@@ -122,7 +110,6 @@ function useLeafletMap({ mapContainerRef, onCoordinatesChange }) {
               stopAutoScroll();
               const newPos = markerRef.current.getLatLng();
               onCoordinatesChange?.({ lat: newPos.lat, lng: newPos.lng });
-              await doReverseGeocode(newPos.lat, newPos.lng);
               mapRef.current?.panTo(newPos);
             });
           }
@@ -147,7 +134,6 @@ function useLeafletMap({ mapContainerRef, onCoordinatesChange }) {
           stopAutoScroll();
           const newPos = markerRef.current.getLatLng();
           onCoordinatesChange?.({ lat: newPos.lat, lng: newPos.lng });
-          await doReverseGeocode(newPos.lat, newPos.lng);
           mapRef.current?.panTo(newPos);
         });
         mapRef.current.panTo(e.latlng);
@@ -170,7 +156,7 @@ function useLeafletMap({ mapContainerRef, onCoordinatesChange }) {
       }
       markerRef.current = null;
     };
-  }, [mapContainerRef, onCoordinatesChange, startAutoScroll, stopAutoScroll, doReverseGeocode]);
+  }, [mapContainerRef, onCoordinatesChange, startAutoScroll, stopAutoScroll]);
 
   // ensure map invalidates size when container becomes visible
   useEffect(() => {

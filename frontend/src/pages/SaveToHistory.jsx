@@ -8,7 +8,6 @@ import { IoMapOutline } from "react-icons/io5";
 import { useGeoGraphy } from '../hooks/useGeoGraphy';
 
 /* ========================= CONSTANTS ========================= */
-const MAP_API_KEY = import.meta.env.VITE_LONGDO_MAP_API_KEY;
 const TAB_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 72;
 
@@ -96,14 +95,16 @@ function useGeographyData() {
     if (!lat || !lng) return;
     setApiBusy(true);
     try {
-      const res = await fetch(`https://api.longdo.com/map/services/address?lon=${lng}&lat=${lat}&noelevation=1&key=${MAP_API_KEY}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/geocode/reverse?lat=${lat}&lng=${lng}`);
       if (!res.ok) {
-        // try to parse server message but continue gracefully
-        let parsed = null;
-        try { parsed = await res.json(); } catch (_) { parsed = null; }
-        throw new Error(parsed?.message || parsed?.detail || res.statusText || `HTTP ${res.status}`);
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
       }
-      const data = await res.json();
+      const json = await res.json();
+      if (!json.ok) {
+        throw new Error(json.message || 'No address returned');
+      }
+      const data = json.data || {};
       const hasParts = data?.province && data?.district && data?.subdistrict;
       if (!hasParts) return;
       const provinceName = String(data.province).replace('จ.', '').trim();
@@ -284,6 +285,7 @@ function SaveToHistory() {
 
   // coords
   const [coordinates, setCoordinates] = useState(null);
+  const coordinatesDebounceTimerRef = useRef(null);
 
   // form selections
   const [selectedProvince, setSelectedProvince] = useState('');
@@ -301,6 +303,18 @@ function SaveToHistory() {
 
   // geometry & geo data hook
   const geo = useGeographyData();
+
+  // pull only the stable pieces we need from geo so we don't depend on the whole object
+  const {
+    findAndAutoFillFromCoords,
+    rawProvinceList,
+    rawDistrictList,
+    rawSubdistrictList,
+    buildDistrictOptionsForProvince,
+    buildSubdistrictOptionsForDistrict,
+    setZipcodeOptions,
+    setSubdistrictOptions: setGeoSubdistrictOptions
+  } = geo;
 
   // set initial date/time once
   useEffect(() => {
@@ -370,29 +384,53 @@ function SaveToHistory() {
     }
   }, [location.state]);
 
-  // handle coordinate changes -> fetch address via hook helper
+  // handle coordinate changes -> fetch address via hook helper with debouncing
   useEffect(() => {
-    if (coordinates) {
-      geo.findAndAutoFillFromCoords(coordinates.lat, coordinates.lng, ({ placeName: p, road: r, provinceName, districtName, subdistrictName }) => {
+    if (!coordinates) return;
+
+    // Clear previous timer if exists
+    if (coordinatesDebounceTimerRef.current) {
+      clearTimeout(coordinatesDebounceTimerRef.current);
+    }
+
+    // Set new timer - wait 500ms after coordinate changes before calling API
+    coordinatesDebounceTimerRef.current = setTimeout(() => {
+      // use the stable function reference from the hook
+      findAndAutoFillFromCoords(coordinates.lat, coordinates.lng, ({ placeName: p, road: r, provinceName, districtName, subdistrictName }) => {
         setPlaceName(p || '');
         setRoad(r || '');
+
         // attempt to auto-select using raw lists
-        const provObj = findByNameLoose(geo.rawProvinceList, 'province_name', provinceName);
+        const provObj = findByNameLoose(rawProvinceList, 'province_name', provinceName);
         if (!provObj) return;
         setSelectedProvince(provObj.province_name);
-        geo.buildDistrictOptionsForProvince(provObj);
-        const distObj = findByNameLoose(geo.rawDistrictList, 'district_name', districtName) || findByNameLoose(geo.rawDistrictList, 'amphoe_t', districtName);
+        buildDistrictOptionsForProvince(provObj);
+
+        const distObj = findByNameLoose(rawDistrictList, 'district_name', districtName) || findByNameLoose(rawDistrictList, 'amphoe_t', districtName);
         if (!distObj) return;
         setSelectedDistrict(distObj.district_name || distObj.amphoe_t);
-        geo.buildSubdistrictOptionsForDistrict(distObj);
-        const subObj = findByNameLoose(geo.rawSubdistrictList, 'subdistrict_name', subdistrictName) || findByNameLoose(geo.rawSubdistrictList, 'tambon_t', subdistrictName);
+        buildSubdistrictOptionsForDistrict(distObj);
+
+        const subObj = findByNameLoose(rawSubdistrictList, 'subdistrict_name', subdistrictName) || findByNameLoose(rawSubdistrictList, 'tambon_t', subdistrictName);
         if (!subObj) return;
         setSelectedSubdistrict(subObj.subdistrict_name || subObj.tambon_t);
+
         const zip = subObj.zip_code;
-        if (zip) { setSelectedZipcode(zip); geo.setZipcodeOptions([{ value: zip, label: zip }]); }
+        if (zip) {
+          setSelectedZipcode(zip);
+          setZipcodeOptions([{ value: zip, label: zip }]);
+        }
       });
-    }
-  }, [coordinates, geo]);
+    }, 500); // ⏱️ Wait 500ms after coordinates change before making API call
+
+    // Cleanup: clear timer on unmount or when coordinates change again
+    return () => {
+      if (coordinatesDebounceTimerRef.current) {
+        clearTimeout(coordinatesDebounceTimerRef.current);
+      }
+    };
+  // depend on primitives and stable callbacks only — avoid depending on whole `geo` object
+  }, [coordinates, findAndAutoFillFromCoords, rawProvinceList, rawDistrictList, rawSubdistrictList, buildDistrictOptionsForProvince, buildSubdistrictOptionsForDistrict, setZipcodeOptions]);
 
   // province/district/subdistrict handlers (kept simple, event-driven to match SearchableDropdown)
   const handleProvinceChange = useCallback((e) => {
@@ -401,37 +439,47 @@ function SaveToHistory() {
     setSelectedDistrict('');
     setSelectedSubdistrict('');
     setSelectedZipcode('');
-    setSubdistrictOptions([]);
-    geo.setZipcodeOptions([]);
-    const provObj = geo.rawProvinceList.find(p => p.province_name === value);
-    if (provObj) geo.buildDistrictOptionsForProvince(provObj);
-  }, [geo]);
+    // clear dependent option lists using stable setters
+    setGeoSubdistrictOptions([]);
+    setZipcodeOptions([]);
+    const provObj = rawProvinceList.find(p => p.province_name === value);
+    if (provObj) buildDistrictOptionsForProvince(provObj);
+  }, [rawProvinceList, buildDistrictOptionsForProvince, setGeoSubdistrictOptions, setZipcodeOptions]);
 
   const handleDistrictChange = useCallback((e) => {
     const value = e?.target?.value ?? '';
     setSelectedDistrict(value);
     setSelectedSubdistrict('');
     setSelectedZipcode('');
-    geo.setZipcodeOptions([]);
-    const distObj = geo.rawDistrictList.find(d => (d.district_name || d.amphoe_t) === value);
-    if (distObj) geo.buildSubdistrictOptionsForDistrict(distObj);
-  }, [geo]);
+    setZipcodeOptions([]);
+    const distObj = rawDistrictList.find(d => (d.district_name || d.amphoe_t) === value);
+    if (distObj) buildSubdistrictOptionsForDistrict(distObj);
+  }, [rawDistrictList, buildSubdistrictOptionsForDistrict, setZipcodeOptions]);
 
   const handleSubdistrictChange = useCallback((e) => {
     const value = e?.target?.value ?? '';
     setSelectedSubdistrict(value);
     setSelectedZipcode('');
-    const subObj = geo.rawSubdistrictList.find(sd => (sd.subdistrict_name || sd.tambon_t) === value);
+    const subObj = rawSubdistrictList.find(sd => (sd.subdistrict_name || sd.tambon_t) === value);
     if (subObj) {
       const zip = subObj.zip_code;
-      geo.setZipcodeOptions(zip ? [{ value: zip, label: zip }] : []);
+      setZipcodeOptions(zip ? [{ value: zip, label: zip }] : []);
       if (zip) setSelectedZipcode(zip);
     }
-  }, [geo]);
+  }, [rawSubdistrictList, setZipcodeOptions]);
 
-  const selectedProvinceObj = useMemo(() => geo.rawProvinceList.find(p => p.province_name === selectedProvince), [geo.rawProvinceList, selectedProvince]);
-  const selectedDistrictObj = useMemo(() => geo.rawDistrictList.find(d => (d.district_name || d.amphoe_t) === selectedDistrict), [geo.rawDistrictList, selectedDistrict]);
-  const selectedSubdistrictObj = useMemo(() => geo.rawSubdistrictList.find(sd => (sd.subdistrict_name || sd.tambon_t) === selectedSubdistrict), [geo.rawSubdistrictList, selectedSubdistrict]);
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (coordinatesDebounceTimerRef.current) {
+        clearTimeout(coordinatesDebounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const selectedProvinceObj = useMemo(() => rawProvinceList.find(p => p.province_name === selectedProvince), [rawProvinceList, selectedProvince]);
+  const selectedDistrictObj = useMemo(() => rawDistrictList.find(d => (d.district_name || d.amphoe_t) === selectedDistrict), [rawDistrictList, selectedDistrict]);
+  const selectedSubdistrictObj = useMemo(() => rawSubdistrictList.find(sd => (sd.subdistrict_name || sd.tambon_t) === selectedSubdistrict), [rawSubdistrictList, selectedSubdistrict]);
 
   // layout components (Desktop / Mobile) re-used but declared inline for single-file requirement
   const DesktopLayout = useMemo(() => (props) => (

@@ -20,3 +20,5 @@ geoalchemy2
 pgvector
 pydantic-settings
 PyJWT
+httpx
+cachetools
