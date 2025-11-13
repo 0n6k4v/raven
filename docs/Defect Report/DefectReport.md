@@ -1,8 +1,8 @@
 # Defect Report & Task List: /evidenceProfile
 
-**Last Updated By:** Ong
+**Last Updated By:** Kawee
 
-**Last Updated At:** 11/11/2025 | 18:42
+**Last Updated At:** 11/14/2025 | 03:21
 
 เอกสารนี้ใช้สำหรับติดตามข้อบกพร่อง (Defects) และงานที่ต้องปรับปรุง (Technical Tasks) สำหรับฟีเจอร์ `evidenceProfile` และส่วนที่เกี่ยวข้อง
 
@@ -161,29 +161,41 @@
 
 ---
 
-### ☐ `BUG-008`: [Major] `SaveToHistory` (desktop) แสดงผลเฉพาะ `RecordTabBar` และ `RecordBottomBar`
+### ✅ `BUG-008`: [Major] `SaveToHistory` (desktop) — Fixed
 
 * **ID:** `BUG-008`
-* **Status:** `Open`
+* **Status:** `Resolved`
 * **Severity:** Major
 * **Priority:** High
-* **Assignee:** `@TBD`
+* **Assignee:** `@Frontend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 11/14/2025
 * **Location:** `/evidenceProfile/save-to-record` — frontend page `frontend/src/pages/SaveToHistory.jsx`
-* **Steps to Reproduce (STR):**
-    1. เปิดแอปบนเครื่องเดสก์ท็อป (หน้าจอขนาด >= `md` breakpoint)
-    2. ไปที่หน้า `SaveToHistory` (เมนูหรือเส้นทาง `/evidenceProfile/save-to-record`)
-    3. สังเกตว่าหน้าจอแสดงผลเฉพาะ `RecordTabBar` ด้านบน และ `RecordBottomBar` ด้านล่าง เท่านั้น
 
-* **Actual Result:**
-    - บนเดสก์ท็อป ฟอร์มอินพุต (เช่น `จังหวัด`, `เขต/อำเภอ`, `แขวง/ตำบล`, `สถานที่`, `ถนน` ฯลฯ) ไม่แสดงขึ้น — เหลือเพียง `RecordTabBar` และ `RecordBottomBar` ทำให้ผู้ใช้ไม่สามารถกรอกข้อมูลได้
+* **Summary (was):** On desktop the page showed only `RecordTabBar` and `RecordBottomBar`, the input form did not render.
+
+* **Actual Result (before fix):**
+    - Inputs (province/district/subdistrict/place/road/etc.) were not visible on desktop; user could not fill the form.
 
 * **Expected Result:**
-    - หน้า `SaveToHistory` ควรแสดงฟอร์มอินพุตทั้งหมดเช่นเดียวกับบนมือถือ รวมทั้ง `LocationFormFields`, รายการ `province/district/subdistrict` และปุ่มยืนยัน/บันทึก
+    - The page should render all input fields and controls on desktop the same as mobile.
 
-* **Notes / Triage hints:**
-    - เกี่ยวข้องกับไฟล์: `frontend/src/pages/SaveToHistory.jsx` (ดู `DesktopLayout`, `MobileLayout`, และ `LocationFormFields` ที่ประกาศภายในไฟล์)
-    - ตรวจสอบเงื่อนไขการเรนเดอร์และคลาส CSS ที่ใช้ซ่อน/แสดงเลย์เอาต์ (เช่น `hidden md:flex` บน container ที่ห่อ `DesktopLayout`) และค่าพร็อพ `loading` / `geo.loading` ที่อาจปิดการแสดงผลฟอร์ม
-    - ตรวจสอบว่า `DesktopLayout` ถูก mount และมีเนื้อหา (ไม่ถูกปิดด้วย CSS height/overflow หรือ z-index) และว่า `props.loading` ถูกตั้งค่าไม่ถูกต้องทำให้แสดง placeholder เท่านั้น
+* **Resolution Notes:**
+    - Fixed rendering logic in `frontend/src/pages/SaveToHistory.jsx`:
+        - `DesktopLayout` now always renders `LocationFormFields` immediately instead of showing a blocking "กำลังโหลดข้อมูล..." placeholder. This ensures inputs are visible while geo data is loading.
+        - Enabled initial geolocation request on mount for desktop so reverse-geocode can auto-fill province/district/subdistrict/place when permission is granted.
+    - Minor UI adjustments applied to related components for consistent layout:
+        - `frontend/src/components/SaveToHistory/RecordTabBar.jsx` — added desktop bottom border for visual separation.
+        - `frontend/src/components/SaveToHistory/RecordBottomBar.jsx` — added desktop top border to match TabBar.
+
+* **Files changed (summary):**
+    - `frontend/src/pages/SaveToHistory.jsx`
+    - `frontend/src/components/SaveToHistory/RecordTabBar.jsx`
+    - `frontend/src/components/SaveToHistory/RecordBottomBar.jsx`
+
+* **Verification / Notes:**
+    - Verified desktop layout now displays input form and allows auto-fill when geolocation permission is granted. If geolocation is denied, inputs remain available for manual entry.
+    - If further UX tuning is desired (e.g., spinner placement or skeletons), consider following up with `TASK-002`.
 
 
 ## 3. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)

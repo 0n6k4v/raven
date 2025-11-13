@@ -11,6 +11,10 @@ venv/
 # Git
 .git
 .gitignore
+.github
+
+docs
+.md
 
 # Node
 node_modules
