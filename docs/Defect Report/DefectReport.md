@@ -161,6 +161,31 @@
 
 ---
 
+### ☐ `BUG-008`: [Major] `SaveToHistory` (desktop) แสดงผลเฉพาะ `RecordTabBar` และ `RecordBottomBar`
+
+* **ID:** `BUG-008`
+* **Status:** `Open`
+* **Severity:** Major
+* **Priority:** High
+* **Assignee:** `@TBD`
+* **Location:** `/evidenceProfile/save-to-record` — frontend page `frontend/src/pages/SaveToHistory.jsx`
+* **Steps to Reproduce (STR):**
+    1. เปิดแอปบนเครื่องเดสก์ท็อป (หน้าจอขนาด >= `md` breakpoint)
+    2. ไปที่หน้า `SaveToHistory` (เมนูหรือเส้นทาง `/evidenceProfile/save-to-record`)
+    3. สังเกตว่าหน้าจอแสดงผลเฉพาะ `RecordTabBar` ด้านบน และ `RecordBottomBar` ด้านล่าง เท่านั้น
+
+* **Actual Result:**
+    - บนเดสก์ท็อป ฟอร์มอินพุต (เช่น `จังหวัด`, `เขต/อำเภอ`, `แขวง/ตำบล`, `สถานที่`, `ถนน` ฯลฯ) ไม่แสดงขึ้น — เหลือเพียง `RecordTabBar` และ `RecordBottomBar` ทำให้ผู้ใช้ไม่สามารถกรอกข้อมูลได้
+
+* **Expected Result:**
+    - หน้า `SaveToHistory` ควรแสดงฟอร์มอินพุตทั้งหมดเช่นเดียวกับบนมือถือ รวมทั้ง `LocationFormFields`, รายการ `province/district/subdistrict` และปุ่มยืนยัน/บันทึก
+
+* **Notes / Triage hints:**
+    - เกี่ยวข้องกับไฟล์: `frontend/src/pages/SaveToHistory.jsx` (ดู `DesktopLayout`, `MobileLayout`, และ `LocationFormFields` ที่ประกาศภายในไฟล์)
+    - ตรวจสอบเงื่อนไขการเรนเดอร์และคลาส CSS ที่ใช้ซ่อน/แสดงเลย์เอาต์ (เช่น `hidden md:flex` บน container ที่ห่อ `DesktopLayout`) และค่าพร็อพ `loading` / `geo.loading` ที่อาจปิดการแสดงผลฟอร์ม
+    - ตรวจสอบว่า `DesktopLayout` ถูก mount และมีเนื้อหา (ไม่ถูกปิดด้วย CSS height/overflow หรือ z-index) และว่า `props.loading` ถูกตั้งค่าไม่ถูกต้องทำให้แสดง placeholder เท่านั้น
+
+
 ## 3. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)
 
 เอกสารนี้ถูกร่างขึ้นโดยอ้างอิงแนวทางปฏิบัติ (Best Practices) ที่เป็นมาตรฐานในอุตสาหกรรมซอฟต์แวร์ เพื่อให้ทั้งมนุษย์และ AI Agents สามารถอ่าน, แก้ไข และติดตามผลได้

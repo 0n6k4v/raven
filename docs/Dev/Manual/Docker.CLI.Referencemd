@@ -1,0 +1,60 @@
+# Docker CLI Reference
+
+## docker compose
+
+**Description**
+
+Define and run multi-container applications with Docker
+
+### docker compose stop [service]
+
+คำอธิบาย: 
+- หยุด container ของ service ที่ระบุไว้ใน `docker-compose.yml` 
+- หยุด process แต่เก็บสถานะ/ข้อมูลของ container ไว้
+
+ตัวอย่าง (PowerShell):
+
+```powershell
+docker compose stop frontend
+```
+
+### docker compose rm -f [service]
+
+คำอธิบาย: 
+- ลบ container ที่ถูกสร้างโดย Compose สำหรับ service ที่ระบุ 
+- `-f` = บังคับ ไม่ถามยืนยัน
+- จะไม่ลบ Volume
+
+ตัวอย่าง (PowerShell):
+
+```powershell
+docker compose rm -f frontend
+```
+
+### docker compose build --no-cache [service]
+
+คำอธิบาย: 
+- สร้าง (build) image ใหม่สำหรับ service โดยไม่ใช้ cache ของ Dockerfile
+- เหมาะเมื่ออยากได้ clean build
+
+ตัวอย่าง (PowerShell):
+
+```powershell
+docker compose build --no-cache frontend
+```
+
+### docker compose up
+
+คำอธิบาย:
+- สร้าง (ถ้ายังไม่มี) และรัน containers ตาม `docker-compose.yml` 
+- ใช้ `-d` เพื่อรันเป็น background
+
+ตัวอย่าง (PowerShell):
+
+```powershell
+# รันและแสดง logs ใน terminal
+docker compose up
+
+# รันเป็น background (detached)
+docker compose up -d
+```

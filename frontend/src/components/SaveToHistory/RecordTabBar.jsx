@@ -3,7 +3,7 @@ import React from 'react';
 const RecordTabBar = () => {
   return (
     <header
-      className="flex items-center justify-between flex-shrink-0 px-6 h-14 bg-white ring-1 ring-gray-100 shadow-sm"
+      className="flex items-center justify-between flex-shrink-0 px-4 sm:px-8 h-14 bg-white ring-1 ring-gray-100 shadow-sm sm:border-b sm:border-gray-200"
       role="banner"
       aria-label="Record header"
     >

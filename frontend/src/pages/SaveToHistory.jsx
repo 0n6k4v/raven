@@ -323,21 +323,19 @@ function SaveToHistory() {
     setDate(now.toISOString().slice(0, 10));
     setTime(now.toTimeString().slice(0, 5));
 
-    // Mobile: auto-fetch geolocation and address
-    if (window.innerWidth < 768) {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            setCoordinates({ lat, lng });
-          },
-          (err) => {
-            console.warn('Geolocation error:', err);
-          },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
-        );
-      }
+    // Auto-fetch geolocation and address on page load (desktop + mobile)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setCoordinates({ lat, lng });
+        },
+        (err) => {
+          console.warn('Geolocation error:', err);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+      );
     }
   }, []);
 
@@ -439,7 +437,7 @@ function SaveToHistory() {
           setZipcodeOptions([{ value: zip, label: zip }]);
         }
       });
-    }, 500); // ⏱️ Wait 500ms after coordinates change before making API call
+    }, 500);
 
     // Cleanup: clear timer on unmount or when coordinates change again
     return () => {
@@ -457,7 +455,6 @@ function SaveToHistory() {
     setSelectedDistrict('');
     setSelectedSubdistrict('');
     setSelectedZipcode('');
-    // clear dependent option lists using stable setters
     setGeoSubdistrictOptions([]);
     setZipcodeOptions([]);
     const provObj = rawProvinceList.find(p => p.province_name === value);
@@ -486,7 +483,6 @@ function SaveToHistory() {
     }
   }, [rawSubdistrictList, setZipcodeOptions]);
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
       if (coordinatesDebounceTimerRef.current) {
@@ -501,45 +497,46 @@ function SaveToHistory() {
 
   // layout components (Desktop / Mobile) re-used but declared inline for single-file requirement
   const DesktopLayout = useMemo(() => (props) => (
-    <div className='flex-1 flex flex-col overflow-hidden'>
+    <div className="flex-1 flex flex-col overflow-hidden">
       <RecordTabBar />
-      <div className='flex flex-1 overflow-auto justify-center items-center bg-gray-50'>
-        <div className="flex w-full max-w-6xl mx-auto bg-white ring-1 ring-gray-200 rounded-2xl shadow-sm" style={{ minHeight: 400 }}>
-          <div className="w-full pt-8 pr-6 pb-8 pl-8 flex flex-col max-h-[550px]">
+
+      <div className="flex flex-1 overflow-hidden justify-center items-stretch bg-gray-50">
+        <div className="flex w-full mx-auto bg-white flex-1" style={{ minHeight: 400 }}>
+          {/* Left: Input - fills remaining vertical space */}
+          <div className="w-1/2 p-8 flex flex-col">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">ระบุตำแหน่ง</h2>
-            <div className="flex-1 overflow-y-auto">
-              {props.loading ? (
-                <div className="p-4 text-center text-gray-600">กำลังโหลดข้อมูล...</div>
-              ) : (
-                <LocationFormFields {...props} />
-              )}
+            <div className="flex-1 overflow-auto">
+              <LocationFormFields {...props} />
             </div>
           </div>
-          {/*
-          <div className="hidden md:block md:w-1/2 pt-8 pr-8 pb-8 pl-4">
-            <div className="w-full h-full" style={{ minHeight: 400 }}>
-              <RecordMap setCoordinates={setCoordinates} />
+
+          {/* Right: Map - fills remaining vertical space; not floating */}
+          {/* <div className="w-1/2 p-8 hidden md:flex">
+            <div className="w-full h-full">
+              <RecordMap setCoordinates={props.setCoordinates} />
             </div>
-          </div>
-          */}
+          </div> */}
         </div>
       </div>
-      <RecordBottomBar
-        evidenceData={evidenceData}
-        analysisResult={analysisResult}
-        province={selectedProvinceObj}
-        district={selectedDistrictObj}
-        subdistrict={selectedSubdistrictObj}
-        houseNumber={houseNumber}
-        village={village}
-        soi={soi}
-        road={road}
-        placeName={placeName}
-        coordinates={coordinates}
-        date={date}
-        time={time}
-        quantity={quantity}
-      />
+
+      <div className="flex-shrink-0" style={{ height: BOTTOM_BAR_HEIGHT }}>
+        <RecordBottomBar
+          evidenceData={evidenceData}
+          analysisResult={analysisResult}
+          province={selectedProvinceObj}
+          district={selectedDistrictObj}
+          subdistrict={selectedSubdistrictObj}
+          houseNumber={houseNumber}
+          village={village}
+          soi={soi}
+          road={road}
+          placeName={placeName}
+          coordinates={coordinates}
+          date={date}
+          time={time}
+          quantity={quantity}
+        />
+      </div>
     </div>
   ), [evidenceData, analysisResult, selectedProvinceObj, selectedDistrictObj, selectedSubdistrictObj, houseNumber, village, soi, road, placeName, coordinates, date, time, quantity]);
 

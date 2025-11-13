@@ -199,7 +199,7 @@ const RecordBottomBar = ({
   ]);
 
   return (
-    <div className="w-full h-full px-4 flex items-center justify-between gap-4 sm:justify-end sm:space-x-4 bg-white ring-1 ring-gray-50 shadow-sm rounded-t-lg">
+    <div className="w-full h-full px-4 flex items-center justify-between gap-4 sm:justify-end sm:space-x-4 bg-white ring-1 ring-gray-50 shadow-sm rounded-t-lg sm:border-t sm:border-gray-200">
       {saveError && (
         <div className="mr-4 self-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-red-50 text-red-700 text-sm font-medium">
