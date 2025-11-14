@@ -47,6 +47,9 @@ class HistoryBase(BaseModel):
                 raise ValueError("AI confidence must be between 0 and 100")
         return value
 
+class HistoryCreate(HistoryBase):
+    pass
+
 class History(HistoryBase):
     id: int
     created_at: datetime

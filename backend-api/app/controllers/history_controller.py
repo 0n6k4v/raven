@@ -2,16 +2,88 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import joinedload
+from geoalchemy2 import WKTElement
 import re
 
 from app.models import history_model
 from app.models.exhibit_model import Exhibit
+from app.schemas.history_schema import HistoryCreate
 from app.services.location_service import get_location_names
 from app.services.user_service import get_discoverer_and_modifier_names
+from app.config.cloudinary_config import upload_image_to_cloudinary
 
 class HistoryController:
     def __init__(self):
         pass
+
+    ALLOWED_FIELDS = {
+        'subdistrict_id', 'discovery_date', 'discovery_time', 'ai_confidence',
+        'place_name', 'house_number', 'village', 'soi', 'road',
+        'quantity', 'exhibit_id', 'discovered_by', 'modified_by'
+    }
+    
+    async def create_history(self, db: AsyncSession, history_data: HistoryCreate, image_file: Optional[object] = None) -> Dict[str, Any]:
+        history_dict = history_data.model_dump(exclude_unset=True)
+
+        latitude = history_dict.pop('latitude', None)
+        longitude = history_dict.pop('longitude', None)
+
+        if latitude is None or longitude is None:
+            raise ValueError('Latitude and longitude are required')
+
+        try:
+            lat_f = float(latitude)
+            lng_f = float(longitude)
+        except (TypeError, ValueError):
+            raise ValueError('Latitude and longitude must be numeric')
+
+        if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
+            raise ValueError('Latitude or longitude out of range')
+
+        discovered_by = history_dict.get('discovered_by') or 'system'
+        history_dict['discovered_by'] = discovered_by
+
+        if 'ai_confidence' in history_dict:
+            try:
+                history_dict['ai_confidence'] = float(history_dict.get('ai_confidence'))
+            except (TypeError, ValueError):
+                history_dict.pop('ai_confidence', None)
+
+        history_kwargs: Dict[str, Any] = {k: history_dict[k] for k in self.ALLOWED_FIELDS if k in history_dict}
+
+        history_kwargs['location'] = WKTElement(f'POINT({lng_f} {lat_f})', srid=4326)
+
+        try:
+            async with db.begin():
+                db_history = history_model.History(**history_kwargs)
+                db.add(db_history)
+                await db.flush()
+                history_id = getattr(db_history, 'id', None)
+
+            # upload image after commit to avoid orphaned uploads; update record if upload succeeds
+            if image_file:
+                try:
+                    upload_result = await upload_image_to_cloudinary(image_file, 'evidence_history')
+                    photo_url = None
+                    if isinstance(upload_result, dict):
+                        photo_url = upload_result.get('secure_url') or upload_result.get('url')
+                    else:
+                        photo_url = str(upload_result)
+
+                    if photo_url:
+                        async with db.begin():
+                            await db.refresh(db_history)
+                            db_history.photo_url = photo_url
+                            db.add(db_history)
+                except Exception:
+                    # If upload fails, do not fail the whole operation by default
+                    pass
+
+            return await self.get_history_by_id(db, history_id)
+
+        except Exception:
+            # Let the caller handle/report exceptions; ensure rollback by context manager
+            raise
 
     async def get_all_histories(self, db: AsyncSession, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
         stmt = select(history_model.History, func.ST_AsText(history_model.History.location).label('location_wkt')).options(
