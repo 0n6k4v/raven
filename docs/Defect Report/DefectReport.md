@@ -2,11 +2,37 @@
 
 **Last Updated By:** Kawee
 
-**Last Updated At:** 11/14/2025 | 03:21
+**Last Updated At:** 14/11/2025 | 14:38
 
 เอกสารนี้ใช้สำหรับติดตามข้อบกพร่อง (Defects) และงานที่ต้องปรับปรุง (Technical Tasks) สำหรับฟีเจอร์ `evidenceProfile` และส่วนที่เกี่ยวข้อง
 
 ---
+
+## Priority / Status Guide
+
+**คำอธิบายสั้น ๆ:** 
+
+ตารางด้านล่างเป็นแนวทางมาตรฐานสำหรับจัดลำดับความสำคัญ (Priority) และสถานะงาน (Status) — พร้อมเวลาเป้าหมายการตอบกลับและการแก้ไขโดยประมาณ และตัวอย่างประกอบ
+
+| Priority | รหัส | ผลกระทบ / ความรุนแรง | ความเร่งด่วน | เวลาเป้าหมายตอบกลับ | เวลาเป้าหมายแก้ไข (Resolution) | ตัวอย่าง |
+|---|---:|---|---|---:|---:|---|
+| Critical | P0 / Blocker | ระบบหลักล่มหรือข้อมูลเสียหาย กระทบผู้ใช้เป็นวงกว้าง | สูงสุด (Immediate) | 15–60 นาที | 4–24 ชั่วโมง (หรือ hotfix ทันที) | Production down, DB corruption, security breach |
+| High | P1 / Major | ฟีเจอร์สำคัญใช้งานไม่ได้ ทำให้กระทบการทำงานของผู้ใช้หลายราย | สูง | 1–4 ชั่วโมง | 1–3 วัน (patch / release) | API หลักตอบ 500, ฟังก์ชันชำรุดที่มี workaround ยาก |
+| Medium | P2 / Normal | ปัญหาที่ลดทอนประสบการณ์ แต่มี workaround | ปานกลาง | ภายใน 1 วันทำการ | 3–7 วัน หรือใน sprint ถัดไป | UI ไม่แสดงบางส่วน, ข้อมูลซ้อนทับใน edge case |
+| Low | P3 / Minor | ข้อเสนอปรับปรุง, cosmetic หรือข้อผิดพลาดที่ไม่กระทบการใช้งาน | ต่ำ | 2–5 วันทำการ | ต่อไปใน release ปกติ / backlog | Typo, alignment, เพิ่ม tooltip, UX enhancement |
+
+**สถานะ (Statuses) — Workflow แบบมาตรฐาน (ตาราง)**
+
+| Status | ความหมาย | คำกระทำที่คาดหวัง / Notes |
+|---|---|---|
+| New / Open | รายงานใหม่ยังไม่ได้ triage | Assign owner, กำหนด Priority และระบุ Steps to reproduce |
+| Triaged / Backlog | ผ่านการประเมินแล้ว ถูกจัดเข้ากลุ่ม backlog | ประเมิน effort, กำหนด milestone หรือ sprint |
+| Accepted / Planned | รับงานแล้ว วางแผนจะทำใน sprint หรือ release ที่กำหนด | วางแผนงาน, ระบุ assignee และ due date |
+| In Progress | กำลังพัฒนา / กำลังทำงาน | อัพเดตความคืบหน้าเป็นระยะ, เปิด PR เมื่อพร้อม |
+| Blocked | งานหยุดเพราะ dependency หรือขาดข้อมูล | ระบุ blocker กับ owner ของ blocker และ dependency ที่ต้องแก้ |
+| In Review / QA | ส่งให้ review หรือทดสอบ | Reviewer/QA ให้ feedback หรืออนุมัติสำหรับ release |
+| Resolved / Ready for Release | แก้ไขเรียบร้อย ผ่าน QA รอรวมใน release | ระบุ PR/Build และแผน release |
+| Done / Closed | ปิดงานแล้ว (deploy/merge เสร็จและยืนยันว่าไม่มีปัญหาซ้ำ) | บันทึกเวลาแก้ไขสุดท้ายและปิด ticket |
 
 ## 1. Technical Tasks & Suggestions (Optimization)
 
@@ -44,22 +70,6 @@
 ---
 
 ## 2. Active Defects (Bugs)
-
-### ☐ `BUG-001`: [Blocker] Infinite update loop ในหน้า /save-to-record
-
-* **ID:** `BUG-001`
-* **Status:** `Open`
-* **Severity:** Blocker
-* **Priority:** High
-* **Assignee:** `@TBD`
-* **Location:** `/evidenceProfile/save-to-record`
-* **Steps to Reproduce (STR):**
-    1.  ไปที่หน้า `/evidenceProfile/save-to-record`
-    2.  สังเกตช่อง "จังหวัด" (Province) ที่ดึงข้อมูลจากพิกัด (Coordinates)
-* **Actual Result:**
-    ช่อง "จังหวัด" มีการอัปเดตค่าซ้ำๆ ตลอดเวลาไม่ยอมหยุด (Infinite update loop) คาดว่าเกิดจาก `useEffect` dependency ที่ไม่ถูกต้อง ส่งผลให้เกิดการ re-render และอาจเรียก API ซ้ำๆ
-* **Expected Result:**
-    การดึงข้อมูลจังหวัดจากพิกัดควรเกิดขึ้นเพียงครั้งเดียว (หรือเมื่อพิกัดต้นทางเปลี่ยน) และค่าต้องนิ่ง
 
 ### ☐ `BUG-002`: [Critical] หน้า /history/detail ไม่แสดงข้อมูล
 
@@ -161,6 +171,35 @@
 
 ---
 
+## 3. Resolved Defects
+
+### ✅ `BUG-001`: [Blocker] Map/loading problem on SaveToHistory after granting geolocation — Resolved
+
+* **ID:** `BUG-001`
+* **Status:** `Resolved`
+* **Severity:** Blocker
+* **Priority:** High
+* **Assignee:** `@Frontend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 14/11/2025
+* **Files changed:**
+    - `frontend/src/pages/SaveToHistory.jsx`
+    - `frontend/src/components/SaveToHistory/RecordMap.jsx`
+    - `frontend/src/components/SaveToHistory/RecordTabBar.jsx`
+    - `frontend/src/components/SaveToHistory/RecordBottomBar.jsx`
+* **Location:** `/evidenceProfile/save-to-record` (frontend page `frontend/src/pages/SaveToHistory.jsx`)
+* **Summary (was):** After granting geolocation permission the map showed "กำลังโหลดแผนที่" and got stuck; tiles and marker did not render even when coordinates were available.
+
+* **Resolution Notes:**
+    - Root cause: Duplicate geolocation requests and a remount loop caused by `coordinates` being included in a memo/dependency chain. The map component was being re-created while tiles were still loading, causing it to get stuck in an initializing state after permission was granted.
+    - Fixes applied:
+        1. Centralized geolocation in the page parent (`SaveToHistory.jsx`) and removed `navigator.geolocation` calls from the child `RecordMap` component to avoid duplicate requests.
+        2. Added a guarded coordinates setter to update state only when latitude/longitude materially change (small epsilon), preventing unnecessary state churn.
+        3. Removed `coordinates` from `useMemo`/layout dependency arrays to avoid remounting the map when coordinates update.
+    - Result: Map initializes once and correctly displays tiles/marker after geolocation permission is granted. Inputs remain editable while geo data resolves.
+
+---
+
 ### ✅ `BUG-008`: [Major] `SaveToHistory` (desktop) — Fixed
 
 * **ID:** `BUG-008`
@@ -173,12 +212,6 @@
 * **Location:** `/evidenceProfile/save-to-record` — frontend page `frontend/src/pages/SaveToHistory.jsx`
 
 * **Summary (was):** On desktop the page showed only `RecordTabBar` and `RecordBottomBar`, the input form did not render.
-
-* **Actual Result (before fix):**
-    - Inputs (province/district/subdistrict/place/road/etc.) were not visible on desktop; user could not fill the form.
-
-* **Expected Result:**
-    - The page should render all input fields and controls on desktop the same as mobile.
 
 * **Resolution Notes:**
     - Fixed rendering logic in `frontend/src/pages/SaveToHistory.jsx`:
@@ -195,10 +228,32 @@
 
 * **Verification / Notes:**
     - Verified desktop layout now displays input form and allows auto-fill when geolocation permission is granted. If geolocation is denied, inputs remain available for manual entry.
-    - If further UX tuning is desired (e.g., spinner placement or skeletons), consider following up with `TASK-002`.
+
+### ✅ `BUG-009`: [Major] Map not interactive on SaveToHistory — Resolved
+
+* **ID:** `BUG-009`
+* **Status:** `Resolved`
+* **Severity:** Major
+* **Priority:** Medium
+* **Assignee:** `@Frontend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 14/11/2025
+* **Files changed:**
+    - `frontend/src/pages/SaveToHistory.jsx`
+    - `frontend/src/components/SaveToHistory/RecordMap.jsx`
+* **Location:** `/evidenceProfile/save-to-record` (frontend page `frontend/src/pages/SaveToHistory.jsx`)
+* **Summary (was):** Map did not behave interactively: marker wasn't created/moved on coordinate changes, no pan/zoom to coordinates, and drag/click interactions didn't update parent coordinates reliably.
+
+* **Resolution Notes:**
+    - Centralized geolocation logic in the page parent (`SaveToHistory.jsx`) and removed duplicate geolocation calls from `RecordMap` to avoid remount loops.
+    - Introduced a guarded coordinates setter (`setCoordinatesIfChanged`) to avoid noisy updates when coordinates only change minimally.
+    - Updated `RecordMap` to react to parent-provided `coordinates`: it now creates a single draggable marker (using an inline SVG `divIcon`), moves the marker when coordinates change, and pans/zooms to the location. Map clicks and marker drag events call back to the parent to update coordinates and trigger reverse-geocoding.
+    - Mobile modal flow: the modal map now shows a preview of the reverse-geocoded address and requires explicit confirmation to apply the address to the main form (prevents accidental auto-insert while allowing preview).
+
+* **Result:** Map is interactive as expected: markers are created/moved, pan/zoom occur on coordinate updates, and user drag/click updates coordinates which then trigger reverse-geocoding to fill the form.
 
 
-## 3. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)
+## 4. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)
 
 เอกสารนี้ถูกร่างขึ้นโดยอ้างอิงแนวทางปฏิบัติ (Best Practices) ที่เป็นมาตรฐานในอุตสาหกรรมซอฟต์แวร์ เพื่อให้ทั้งมนุษย์และ AI Agents สามารถอ่าน, แก้ไข และติดตามผลได้
 
