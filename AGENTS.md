@@ -12,45 +12,27 @@
 - Frontend: Vite + React
 - CSS: Tailwind
 
-**Architecture:**
-- แยกเป็นบริการย่อย (service separation) เพื่อให้พัฒนาและดีพลอยแยกส่วนได้
-- Backend สื่อสารกับ AI service ผ่าน HTTP/REST และเก็บข้อมูลใน PostgreSQL
-
 ## Setup Commands
 
-คำสั่งตัวอย่างสำหรับการเตรียมสภาพแวดล้อมทั่วไป (ปรับตาม OS/เวอร์ชันของคุณ):
-
-- โคลน repo:
-
-- รัน docker-compose (ถ้าต้องการตั้งค่าสภาพแวดล้อมทั้งหมดพร้อมกัน):
-
-- ติดตั้ง dependencies แบบ local (ตัวอย่าง backend):
-
-
 ### Prerequisites
-
-- ติดตั้ง Git, Docker และ Docker Compose
-- ติดตั้ง Python 3.8+ และ pip
-- ติดตั้ง Node.js 16+ และ npm/yarn (สำหรับ frontend)
+- Node.js 16+
+- Python 3.8+
+- Docker Desktop
+- Github CLI
+- Git LFS
 
 ### Environment Setup
 
-1. ตรวจสอบไฟล์ config แต่ละ service ใน `backend-api/app/config` และ `ai-service-api/app` เพื่อดู environment variables ที่ต้องกำหนด
-2. สร้างไฟล์ `.env` หรือกำหนด environment variables ในเครื่องของคุณตามที่แต่ละ service ต้องการ (DB URL, SECRET KEYS, CLOUDINARY ฯลฯ)
-3. ถ้ารันแบบ local ให้ติดตั้ง dependencies ภายในแต่ละโฟลเดอร์ เช่น `pip install -r requirements.txt` สำหรับ backend/ai-service และ `npm install` สำหรับ frontend
-
 **Local Dev Container**
+```bash
+# Clone Repository
+gh repo clone 0n6k4v/
+cd raven
 
-โปรเจคมี `docker-compose.yml` ที่ออกแบบมาให้รันหลาย service พร้อมกันใน environment เดียว — ใช้สำหรับการพัฒนาเพื่อให้ backend, ai-service และ db สื่อสารกันได้โดยไม่ต้องตั้งค่าเพิ่มเติม
-
-`
-docker-compose -f docker-compose.prod.yml up --build
-`
-
-### Configuration
-
-- เฟ้มการตั้งค่าของ backend อยู่ที่ `backend-api/app/config` (เช่น `db_config.py`, `auth_config.py`, `cloudinary_config.py`, `ai_config.py`)
-- ใส่ค่า environment ที่จำเป็น เช่น `DATABASE_URL`, `SECRET_KEY`, `CLOUDINARY_URL`, `AI_SERVICE_URL` ก่อนรัน
+# ดาวน์โหลดไฟล์ Model AI ลงมาจาก Remote Server
+# เนื่องจากไฟล์ที่เรา Clone ลงมาเป็นเพียงแต่ Text Pointer เท่านั้น 
+git lfs pull
+```
 
 ## Development Workflow
 
@@ -186,3 +168,4 @@ DOCKER_BUILDKIT=1 docker compose up --build
 - Docker Buildx (buildx CLI for advanced build features & cache): https://docs.docker.com/buildx/working-with-buildx/
 - Docker Compose (v2) docs: https://docs.docker.com/compose/
 - Buildx cache-to/cache-from docs: https://docs.docker.com/build/buildkit/cache/
+- Git Large File Storage: https://git-lfs.com/
