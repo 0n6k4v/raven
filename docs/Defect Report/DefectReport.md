@@ -2,7 +2,7 @@
 
 **Last Updated By:** Kawee
 
-**Last Updated At:** 14/11/2025 | 14:38
+**Last Updated At:** 20/11/2025 | 0:08
 
 เอกสารนี้ใช้สำหรับติดตามข้อบกพร่อง (Defects) และงานที่ต้องปรับปรุง (Technical Tasks) สำหรับฟีเจอร์ `evidenceProfile` และส่วนที่เกี่ยวข้อง
 
@@ -171,58 +171,6 @@
 
 ---
 
-### ☐ `BUG-010`: [Major] Save action in `RecordBottomBar` fails (backend missing)
-
-* **ID:** `BUG-010`
-* **Status:** `Open`
-* **Severity:** Major
-* **Priority:** Medium
-* **Assignee:** `@TBD`
-* **Location:** `/evidenceProfile/save-to-record` — frontend file `frontend/src/components/SaveToHistory/RecordBottomBar.jsx`
-* **Steps to Reproduce (STR):**
-    1. เปิดหน้า `/evidenceProfile/save-to-record`
-    2. กรอกข้อมูลตำแหน่งหรือเลือกจากแผนที่ให้ครบตามที่ต้องการ
-    3. กดปุ่ม `บันทึก` ด้านล่าง (RecordBottomBar)
-
-* **Actual Result:**
-    - ปุ่มตอบสนอง (UI state changes to saving) แต่การเรียก API ล้มเหลวหรือได้รับ response ว่า endpoint ยังไม่มี/ไม่ถูกต้อง — ข้อมูลไม่ถูกบันทึกลงระบบ
-
-* **Expected Result:**
-    - ปุ่มควรส่ง `FormData` ไปยัง endpoint backend (`POST /api/history`) และได้รับการตอบรับว่าบันทึกสำเร็จ จากนั้นนำผู้ใช้ไปยังหน้าประวัติพร้อมข้อความยืนยัน
-
-* **Notes / Suggestions:**
-    - ตรวจสอบว่า backend API สำหรับ `POST /api/history` ถูกพัฒนาและตอบรับ `multipart/form-data` ตามที่ `RecordBottomBar` ส่ง (ภาพ + metadata)
-    - ตัว `RecordBottomBar` ใช้ `API_CONFIG.BASE_URL` + `ENDPOINTS.HISTORY` — จึงแนะนำให้ backend implement endpoint ที่สอดคล้องกับการเรียกนี้ หรือปรับค่า `API_CONFIG` ให้ชี้ไปยัง endpoint ที่มีอยู่
-    - เพิ่ม unit/integration test ฝั่ง backend เพื่อยืนยันการรับ `image`, `subdistrict_id`, `latitude`, `longitude` และฟิลด์ที่จำเป็นอื่น ๆ
-
-### ☐ `BUG-011`: [High] `POST /api/history` returns 500 Internal Server Error when saving from UI
-
-* **ID:** `BUG-011`
-* **Status:** `Open`
-* **Severity:** High
-* **Priority:** P1 / Major
-* **Assignee:** `@TBD`
-* **Location:** `/evidenceProfile/save-to-record` (frontend `RecordBottomBar.jsx`) and `backend-api` endpoint `POST /api/history`
-* **Steps to Reproduce (STR):**
-    1. Open `/evidenceProfile/save-to-record` in the browser.
-    2. Fill required fields (select `subdistrict`, choose location on map, or allow geolocation).
-    3. Click the `บันทึก` (Save) button in `RecordBottomBar`.
-* **Actual Result:**
-    - Browser Network: `POST http://localhost:8000/api/history 500 (Internal Server Error)`
-    - Frontend console logs show: `installHook.js:1 [RecordBottomBar] Save history error: Internal server error Error: Internal server error`.
-    - Backend log shows: `INFO:     172.18.0.1:38900 - "POST /api/history HTTP/1.1" 500 Internal Server Error` (no stack trace in logs captured here).
-    - Data is not persisted; user sees save failure.
-* **Expected Result:**
-    - Backend responds with `200` (or `201`) and returns a `HistoryWithExhibit` JSON payload. Frontend navigates to `/history` with success popup.
-* **Notes / Triage Suggestions:**
-    - This is a runtime server error — likely causes to check:
-      - Inspect backend container logs for traceback: `docker compose logs backend-api --tail 200` or view stdout where uvicorn prints the exception.
-      - Reproduce with `curl` (multipart/form-data) to see server response body and headers.
-      - Verify DB connectivity and migrations/schema (missing column or constraint can raise exceptions during insert).
-      - Verify Cloudinary / upload helper config: `upload_image_to_cloudinary` is called after commit — if it raises unexpectedly it should be caught, but upstream errors during DB insert can cause 500.
-      - Confirm authentication dependency `get_current_active_user_from_cookie` is returning a valid user; unexpected None/invalid types may lead to downstream errors.
-      - In dev environment, enable detailed exception tracebacks to get the Python stack trace from uvicorn for faster triage.
-    - Quick triage commands (PowerShell):
 ```powershell
 # Tail backend logs (recent)
 docker compose logs -f backend-api
@@ -231,19 +179,6 @@ docker compose logs -f backend-api
 docker compose build backend-api
 docker compose up -d backend-api
 ``` 
-    - Reproduce with curl (no cookie):
-```bash
-curl -v -X POST "http://localhost:8000/api/history" \
-  -F "subdistrict_id=123" \
-  -F "latitude=13.7563" \
-  -F "longitude=100.5018" \
-  -F "image=@/path/to/evidence.jpg"
-```
-* **Next actions recommended:**
-    1. Get a full traceback from backend logs and attach it here.
-    2. If traceback points to DB/model validation, add input validation or adjust schema accordingly.
-    3. If it's an authentication/cookie issue, check cookie domain/SameSite and ensure `credentials: 'include'` sends the cookie.
-    4. Consider adding a temporary error message in the backend (dev only) to include exception text in the 500 response for quick debugging.
 
 
 ## 3. Resolved Defects
@@ -326,6 +261,69 @@ curl -v -X POST "http://localhost:8000/api/history" \
     - Mobile modal flow: the modal map now shows a preview of the reverse-geocoded address and requires explicit confirmation to apply the address to the main form (prevents accidental auto-insert while allowing preview).
 
 * **Result:** Map is interactive as expected: markers are created/moved, pan/zoom occur on coordinate updates, and user drag/click updates coordinates which then trigger reverse-geocoding to fill the form.
+
+### ✅ `BUG-010`: [Major] Save action in `RecordBottomBar` fails — Resolved
+
+* **ID:** `BUG-010`
+* **Status:** `Resolved`
+* **Severity:** Major
+* **Priority:** Medium
+* **Assignee:** `@Frontend`, `@Backend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 20/11/2025
+* **Location:** `/evidenceProfile/save-to-record` — frontend file `frontend/src/components/SaveToHistory/RecordBottomBar.jsx`
+* **Files changed:**
+    - `frontend/src/components/SaveToHistory/RecordBottomBar.jsx` — ensured proper FormData key names, `credentials: 'include'`, improved validation and error handling
+    - `backend-api/app/routes/history.py` — implemented `POST /history` endpoint and centralized request error handling
+    - `backend-api/app/controllers/history_controller.py` — implemented `create_history`, validations, coordinate handling, DB commit flow, and cloudinary image upload
+    - `backend-api/app/schemas/history_schema.py` — added validators for date/time and AI confidence fields
+    - `backend-api/app/config/cloudinary_config.py` — updated `upload_image_to_cloudinary` to accept `UploadFile` and return secure URL
+* **Summary (was):** Save button in the frontend didn't result in a persisted history record because backend endpoint or handling was missing / incompatible.
+
+* **Resolution Notes:**
+    - Implemented `POST /api/history` endpoint to accept `multipart/form-data` containing `image` and metadata.
+    - Added defensive server-side validation for required fields (subdistrict_id, latitude, longitude) and numeric casting for latitude/longitude & AI confidence.
+    - Cloudinary upload is now integrated and wrapped in a try/catch so that upload failures don't crash the whole request.
+    - Updated frontend `RecordBottomBar.jsx` FormData builder to align with backend schema and to always send `image` as a File when available.
+    - Added better error handling (error message extraction) and success navigation in the frontend.
+* **Result / Verification:**
+    - Frontend `RecordBottomBar` sends a `POST /api/history` request with `multipart/form-data` and `credentials: include`.
+    - Verified network call returns `201 Created` and the record appears in DB with `photo_url` set to Cloudinary secure URL.
+    - UI navigates to `/history` with success popup.
+
+### ✅ `BUG-011`: [High] `POST /api/history` returns 500 Internal Server Error when saving from UI — Resolved
+
+* **ID:** `BUG-011`
+* **Status:** `Resolved`
+* **Severity:** High
+* **Priority:** P1 / Major
+* **Assignee:** `@Backend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 20/11/2025
+* **Location:** `/evidenceProfile/save-to-record` (frontend `RecordBottomBar.jsx`) and `backend-api` endpoint `POST /api/history`
+* **Files changed:**
+    - `backend-api/app/routes/history.py` — added `handle_exceptions` wrapper and `POST /history` route using Pydantic models
+    - `backend-api/app/controllers/history_controller.py` — improved error handling, coordinate validation, commit/rollback flow, and prevented unhandled exceptions from leaking as 500s
+    - `backend-api/app/schemas/history_schema.py` — reinforced field validators for `discovery_date`, `discovery_time`, and `ai_confidence` shape
+    - `frontend/src/components/SaveToHistory/RecordBottomBar.jsx` — validation and better error handling to prevent invalid payloads from reaching server
+* **Summary (was):** Saving a new history record produced a 500 Internal Server Error in some scenarios (e.g., invalid payload, missing fields, cloudinary errors), leaving the user without feedback and without a saved record.
+
+* **Resolution Notes:**
+    - Added explicit validation and checks on the backend controller to verify fields (e.g., coordinates numeric, latitude/longitude within bounds) and to convert types safely.
+    - Cleaned up error handling in `create_history` with structured exception catching and improved logs to include tracebacks (dev environment) while returning friendly 4xx errors for client-side input issues.
+    - Wrapped cloudinary uploads in a try/catch; if the upload fails, a warning is logged and the request still returns success if the DB record persisted, or returns suitable error details.
+    - Fixed a missing/incorrect required-fields check (previously enforced purely optional fields); backend now only enforces required fields correctly.
+    - Adjusted the frontend validation to avoid malformed requests (e.g., ensure `ai_confidence` exists or is allowed to be omitted per schema) and to display human-friendly error messages.
+* **Result / Verification:**
+    - Reproduced saving flow using `curl` and via the UI: `POST /api/history` now returns `201` with JSON payload or `400` with a descriptive error for invalid input instead of 500.
+    - Backend logs contain stacktrace information when exceptions occur in dev mode, improving triage, and non-fatal errors (like image upload fail) are logged but do not cause 500.
+    - Validation checks prevent previously malformed requests from making it to DB code that raised uncaught exceptions.
+
+* **Next actions recommended:**
+    1. Get a full traceback from backend logs and attach it here for future triage (dev environment should capture stack trace).
+    2. Add unit/integration tests for `POST /api/history` including multipart upload and field validation cases (success, missing required fields, invalid coordinates, cloudinary upload failure).
+    3. If an authentication/cookie issue recurs, validate cookie domain/SameSite and ensure `credentials: 'include'` is used consistently in frontend requests.
+    4. Consider adding an incident-level monitor/alert for recurring 500 errors on `/api/history` to detect regressions early.
 
 
 ## 4. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)

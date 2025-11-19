@@ -1,238 +1,255 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import TabBar from '../components/EvidenceProfile/TabBar';
-import BottomBar from '../components/EvidenceProfile/BottomBar';
-import FirearmBasicInformation from '../components/EvidenceProfile/FirearmBasicInformation';
-import NarcoticBasicInformation from '../components/EvidenceProfile/NarcoticBasicInformation';
-import Gallery from '../components/EvidenceProfile/Gallery';
-import History from '../components/EvidenceProfile/History';
-import Map from '../components/EvidenceProfile/Map';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import TabBar from "../components/EvidenceProfile/TabBar";
+import BottomBar from "../components/EvidenceProfile/BottomBar";
+import FirearmBasicInformation from "../components/EvidenceProfile/FirearmBasicInformation";
+import NarcoticBasicInformation from "../components/EvidenceProfile/NarcoticBasicInformation";
+import Gallery from "../components/EvidenceProfile/Gallery";
+import History from "../components/EvidenceProfile/History";
+import Map from "../components/EvidenceProfile/Map";
 
 // ==================== CONSTANTS ====================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
-let inMemoryEvidenceStore = null;
 const UNKNOWN_GUN_EXHIBIT_ID = 93;
+
+let inMemoryEvidenceStore = null;
 
 // ==================== UTILS ====================
 const normalizeNameForSearch = (brandName, modelName) => {
-  if (!brandName && !modelName) return '';
-  const normalize = (s) => (s ? String(s).toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+  if (!brandName && !modelName) return "";
+  const normalize = (s) =>
+    s ? String(s).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
   return `${normalize(brandName)}${normalize(modelName)}`;
 };
 
 async function getFirearmByNormalized(normalizedName, { signal } = {}) {
   if (!normalizedName) return null;
+
   const url = new URL(`${BASE_URL}/firearm/get-by-normalized`);
-  url.searchParams.set('normalized_name', normalizedName);
-  const res = await fetch(url.toString(), { method: 'GET', signal });
+  url.searchParams.set("normalized_name", normalizedName);
+
+  const res = await fetch(url.toString(), { method: "GET", signal });
+
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(() => "");
     throw new Error(`getFirearmByNormalized failed: ${res.status} ${text}`);
   }
+
   if (res.status === 204) return null;
-  try { return await res.json(); } catch { return null; }
+
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
-// ==================== CUSTOM HOOK ====================
+
+
+// ==================== CUSTOM HOOK (Optimized) ====================
 const useEvidenceProfile = (location) => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
+
   const [evidence, setEvidence] = useState(() => {
-    let initialData = { type: '', result: null, details: null, imageUrl: null };
-
     try {
-      if (location.state?.evidence) {
-        inMemoryEvidenceStore = location.state.evidence;
-        return location.state.evidence;
+      const stateEvidence = location.state?.evidence;
+      const stateType = location.state?.type;
+
+      if (stateEvidence) {
+        inMemoryEvidenceStore = stateEvidence;
+        return stateEvidence;
       }
 
-      if (location.state?.type) {
-        initialData = {
-          type: location.state.type,
+      if (stateType) {
+        const data = {
+          type: stateType,
           result: location.state.result || null,
-          imageUrl: localStorage.getItem('analysisImage') || null
+          imageUrl: location.state.evidence?.imageUrl || null
         };
-        inMemoryEvidenceStore = initialData;
-        return initialData;
+        inMemoryEvidenceStore = data;
+        return data;
       }
 
-      const savedMinimal = localStorage.getItem('minimalEvidenceResult');
-      if (savedMinimal) {
-        const result = JSON.parse(savedMinimal);
-        const typeFromStorage = localStorage.getItem('selectedEvidenceType')
-          || localStorage.getItem('evidenceType')
-          || (result?.hasOwnProperty('prediction') ? 'Drug' : 'Gun');
-        return { type: typeFromStorage, result, imageUrl: localStorage.getItem('analysisImage') || null };
+      const savedResult = localStorage.getItem("minimalEvidenceResult");
+      if (savedResult) {
+        const parsed = JSON.parse(savedResult);
+        const type =
+          localStorage.getItem("selectedEvidenceType") ||
+          localStorage.getItem("evidenceType") ||
+          (parsed?.prediction ? "Drug" : "Gun");
+
+        return {
+          type,
+          result: parsed,
+          imageUrl: location.state?.evidence?.imageUrl || null
+        };
       }
 
-      const evidenceType = localStorage.getItem('evidenceType');
-      const imageUrl = localStorage.getItem('analysisImage');
-      if (evidenceType || imageUrl) {
-        return { type: evidenceType || '', result: null, imageUrl: imageUrl || null };
-      }
+      const type = localStorage.getItem("evidenceType");
+      const img = location.state?.evidence?.imageUrl;
+      return { type: type || "", result: null, imageUrl: img || null };
     } catch (err) {
-      console.warn('useEvidenceProfile init error:', err);
+      console.warn("Init Evidence Error:", err);
+      return { type: "", result: null, imageUrl: null };
     }
-
-    return initialData;
   });
 
-  const fetchFirearmDetails = useCallback(async (brandName, modelName) => {
-    if (!brandName && !modelName) return false;
-    setIsLoading(true);
-    setApiError(null);
+  const drugControllerRef = useRef(null);
 
-    const normalizedKey = normalizeNameForSearch(brandName, modelName);
-    const controller = new AbortController();
-    try {
-      if (String(brandName) === 'Unknown' && String(modelName) === 'Unknown') {
-        const resp = await fetch(`${BASE_URL}/exhibits/${UNKNOWN_GUN_EXHIBIT_ID}`, { signal: controller.signal });
-        if (!resp.ok) {
-          if (resp.status === 404) return false;
-          throw new Error(`Failed to fetch exhibit ${UNKNOWN_GUN_EXHIBIT_ID}: ${resp.status}`);
+
+  // ==================== FETCH FIREARM DETAILS ====================
+  const fetchFirearmDetails = useCallback(
+    async (brandName, modelName) => {
+      if (!brandName && !modelName) return false;
+
+      setIsLoading(true);
+      setApiError(null);
+
+      const normalizedKey = normalizeNameForSearch(brandName, modelName);
+      const controller = new AbortController();
+
+      try {
+        if (brandName === "Unknown" && modelName === "Unknown") {
+          const resp = await fetch(
+            `${BASE_URL}/exhibits/${UNKNOWN_GUN_EXHIBIT_ID}`,
+            { signal: controller.signal }
+          );
+
+          if (!resp.ok) {
+            if (resp.status === 404) return false;
+            throw new Error(`Failed to fetch unknown exhibit`);
+          }
+
+          const exhibit = await resp.json();
+          setEvidence((prev) => ({
+            ...prev,
+            details: {
+              id: UNKNOWN_GUN_EXHIBIT_ID,
+              brand: "Unknown",
+              model: "",
+              type: "อาวุธปืนประเภทไม่ทราบชนิด",
+              exhibit
+            }
+          }));
+          return true;
         }
-        const unknownExhibit = await resp.json();
-        if (!unknownExhibit) return false;
-        setEvidence(prev => ({
+
+        const firearm = await getFirearmByNormalized(normalizedKey, {
+          signal: controller.signal
+        });
+        if (!firearm) return false;
+
+        let exhibitMeta = { id: firearm.exhibit_id, category: null, subcategory: null };
+
+        if (firearm.exhibit_id) {
+          const exhibitResp = await fetch(
+            `${BASE_URL}/exhibits/${firearm.exhibit_id}`,
+            { signal: controller.signal }
+          );
+
+          if (exhibitResp.ok) {
+            const data = await exhibitResp.json().catch(() => null);
+            if (data) {
+              exhibitMeta.category = data.category;
+              exhibitMeta.subcategory = data.subcategory;
+            }
+          }
+        }
+
+        setEvidence((prev) => ({
           ...prev,
           details: {
-            id: UNKNOWN_GUN_EXHIBIT_ID,
-            brand: 'Unknown',
-            model: '',
-            type: 'อาวุธปืนประเภทไม่ทราบชนิด',
-            exhibit: { id: unknownExhibit.id, category: unknownExhibit.category, subcategory: unknownExhibit.subcategory }
+            ...firearm,
+            exhibit: exhibitMeta,
+            images: Array.isArray(firearm.example_images)
+              ? firearm.example_images
+              : firearm.example_images
+              ? [firearm.example_images]
+              : []
           }
         }));
+
         return true;
-      }
+      } catch (err) {
+        if (err.name === "AbortError") return false;
 
-      const firearmResp = await getFirearmByNormalized(normalizedKey, { signal: controller.signal });
-      if (!firearmResp) return false;
-
-      const exhibitId = firearmResp.exhibit_id ?? null;
-      const exhibitMeta = { id: exhibitId, category: undefined, subcategory: undefined };
-
-      if (exhibitId) {
-        const exhibitResp = await fetch(`${BASE_URL}/exhibits/${exhibitId}`, { signal: controller.signal });
-        if (exhibitResp.ok) {
-          try {
-            const exhibitData = await exhibitResp.json();
-            exhibitMeta.category = exhibitData?.category;
-            exhibitMeta.subcategory = exhibitData?.subcategory;
-          } catch {
-          }
-        } else if (exhibitResp.status !== 404) {
-          throw new Error(`Failed to fetch exhibit ${exhibitId}: ${exhibitResp.status}`);
-        }
-      }
-
-      setEvidence(prev => ({
-        ...prev,
-        details: {
-          ...firearmResp,
-          exhibit: exhibitMeta,
-          images: Array.isArray(firearmResp.example_images)
-            ? firearmResp.example_images
-            : (firearmResp.example_images ? [firearmResp.example_images] : [])
-        }
-      }));
-      
-      return true;
-    } catch (err) {
-      if (err.name === 'AbortError') {
+        console.error("fetchFirearmDetails error:", err);
+        setApiError(err.message || "Unknown error");
         return false;
+      } finally {
+        setIsLoading(false);
+        controller.abort();
       }
-      console.error('fetchFirearmDetails error:', err);
-      setApiError(err?.message || 'Unknown error');
-      return false;
-    } finally {
-      setIsLoading(false);
-      controller.abort();
-    }
-  }, []);
+    },
+    []
+  );
 
-  const lastDrugFetchRef = useRef(null);
-  const drugFetchControllerRef = useRef(null);
 
+  // ==================== FETCH NARCOTIC DETAILS ====================
   const fetchDrugDetails = useCallback(async (narcoticId) => {
     if (!narcoticId) return false;
 
-    if (lastDrugFetchRef.current === narcoticId) {
-      return true;
-    }
-
-    try {
-      if (drugFetchControllerRef.current) {
-        drugFetchControllerRef.current.abort();
-      }
-    } catch (e) {
+    if (drugControllerRef.current) {
+      drugControllerRef.current.abort();
     }
 
     const controller = new AbortController();
-    drugFetchControllerRef.current = controller;
-    lastDrugFetchRef.current = narcoticId;
+    drugControllerRef.current = controller;
 
     setIsLoading(true);
     setApiError(null);
+
     try {
-      const resp = await fetch(`${BASE_URL}/narcotics/${narcoticId}`, { signal: controller.signal });
-      if (!resp.ok) throw new Error(`Failed to fetch narcotic ${narcoticId}: ${resp.status}`);
-      const drugData = await resp.json();
-
-      setEvidence(prev => {
-        const existingId = prev?.details?.id;
-        if (existingId && Number(existingId) === Number(drugData.id)) {
-          return {
-            ...prev,
-            result: {
-              ...prev.result,
-              exhibit_id: drugData.exhibit_id || drugData.exhibit?.id || prev.result?.exhibit_id,
-            }
-          };
-        }
-
-        return {
-          ...prev,
-          details: drugData,
-          result: {
-            ...prev.result,
-            exhibit_id: drugData.exhibit_id || drugData.exhibit?.id || prev.result?.exhibit_id,
-            prediction: prev.result?.prediction,
-            confidence: prev.result?.confidence,
-            narcotic_id: prev.result?.narcotic_id,
-            similarity: prev.result?.similarity
-          }
-        };
+      const resp = await fetch(`${BASE_URL}/narcotics/${narcoticId}`, {
+        signal: controller.signal
       });
 
-      return true;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        drugFetchControllerRef.current = null;
-        return false;
+      if (!resp.ok) {
+        throw new Error(`Failed to fetch narcotic: ${resp.status}`);
       }
-      console.error('fetchDrugDetails error:', error);
-      setApiError(error?.message || 'Unknown error');
-      lastDrugFetchRef.current = null;
+
+      const drug = await resp.json();
+
+      setEvidence((prev) => ({
+        ...prev,
+        details: drug,
+        result: {
+          ...prev.result,
+          exhibit_id: drug.exhibit_id || drug.exhibit?.id
+        }
+      }));
+
+      return true;
+    } catch (err) {
+      if (err.name === "AbortError") return false;
+      console.error("Drug fetch error", err);
+      setApiError(err.message || "Unknown error");
       return false;
     } finally {
       setIsLoading(false);
-      drugFetchControllerRef.current = null;
+      drugControllerRef.current = null;
     }
   }, []);
 
+
+  // ==================== AUTO-FETCH WHEN EVIDENCE CHANGES ====================
   useEffect(() => {
-    const result = evidence?.result;
-    if (!result) return;
+    const r = evidence?.result;
+    if (!r) return;
 
-    const narcoticId = result?.narcotic_id;
-    const brandName = result?.brandName;
-    const modelName = result?.modelName;
+    if (evidence.type === "Gun" && r.brandName && r.modelName) {
+      fetchFirearmDetails(r.brandName, r.modelName);
+    }
 
-    if (evidence.type === 'Gun' && brandName && modelName) {
-      fetchFirearmDetails(brandName, modelName);
-    } else if (evidence.type === 'Drug' && narcoticId) {
-      fetchDrugDetails(narcoticId);
+    if (evidence.type === "Drug" && r.narcotic_id) {
+      fetchDrugDetails(r.narcotic_id);
     }
   }, [
     evidence?.type,
@@ -243,44 +260,29 @@ const useEvidenceProfile = (location) => {
     fetchDrugDetails
   ]);
 
+
+  // ==================== PERSIST MINIMAL RESULT ====================
   useEffect(() => {
     if (!evidence) return;
+
     try {
       inMemoryEvidenceStore = evidence;
-      if (evidence.type) localStorage.setItem('evidenceType', evidence.type);
+
+      if (evidence.type) localStorage.setItem("evidenceType", evidence.type);
+
       if (evidence.result) {
-        const minimalResult = {
-          className: evidence.result.className,
-          confidence: evidence.result.confidence,
-          prediction: evidence.result.prediction
+        const minimal = {
+          prediction: evidence.result.prediction,
+          confidence: evidence.result.confidence
         };
-        try {
-          localStorage.setItem('minimalEvidenceResult', JSON.stringify(minimalResult));
-        } catch {
-          localStorage.setItem('hasEvidenceResult', 'true');
-        }
+
+        localStorage.setItem("minimalEvidenceResult", JSON.stringify(minimal));
       }
     } catch (err) {
-      console.warn('Persist minimal references failed:', err);
+      console.warn("Persist failed", err);
     }
   }, [evidence]);
 
-  useEffect(() => {
-    if (!evidence?.details) return;
-    try {
-      const minimalInfo = { type: evidence.type, id: evidence.details.id };
-      if (evidence.type === 'Gun') {
-        minimalInfo.model = evidence.details.model;
-        minimalInfo.brand = evidence.details.brand;
-      } else if (evidence.type === 'Drug') {
-        minimalInfo.drug_type = evidence.details.drug_type;
-        minimalInfo.narcotic_id = evidence.details.id;
-      }
-      localStorage.setItem('evidenceDetails', JSON.stringify(minimalInfo));
-    } catch (err) {
-      console.warn('Persist minimal details failed:', err);
-    }
-  }, [evidence?.details, evidence?.type]);
 
   return {
     evidence,
@@ -293,44 +295,49 @@ const useEvidenceProfile = (location) => {
 };
 
 
-// ==================== MAIN COMPONENTS ====================
+// ==================== MAIN COMPONENT ====================
+
 const EvidenceProfile = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
   const isMobile = false;
   const isTablet = false;
 
-  const { evidence, setEvidence, isLoading, apiError } = useEvidenceProfile(location);
+  const { evidence, isLoading, apiError } = useEvidenceProfile(location);
 
-  // derive active tab from path (memoized)
   const activeTab = useMemo(() => {
-    const path = location.pathname || '';
-    if (path.includes('/gallery')) return 1;
-    if (path.includes('/history')) return 2;
-    if (path.includes('/map')) return 3;
+    const path = location.pathname || "";
+    if (path.includes("/gallery")) return 1;
+    if (path.includes("/history")) return 2;
+    if (path.includes("/map")) return 3;
     return 0;
   }, [location.pathname]);
 
-  // Render helpers
+
   const renderBasicInfo = useCallback(() => {
-    if (!evidence || (!evidence.type && !evidence.result)) {
+    if (!evidence) {
       return <div className="p-4 text-red-600">ไม่พบข้อมูลวัตถุพยาน</div>;
     }
-    const evidenceType = evidence.type || (evidence.result?.hasOwnProperty('prediction') && !evidence.result?.isUnknown ? 'Drug' : 'Gun');
 
-    switch (evidenceType) {
-      case 'Gun':
+    const type =
+      evidence.type ||
+      (evidence.result?.prediction ? "Drug" : "Gun");
+
+    switch (type) {
+      case "Gun":
         return (
           <FirearmBasicInformation
             evidence={evidence.details}
             analysisResult={evidence.result}
             isLoading={isLoading}
             apiError={apiError}
-            userImageUrl={evidence?.imageUrl || null}
+            userImageUrl={evidence.imageUrl}
             isMobile={isMobile}
           />
         );
-      case 'Drug':
+
+      case "Drug":
         return (
           <NarcoticBasicInformation
             evidence={evidence.details}
@@ -338,31 +345,25 @@ const EvidenceProfile = () => {
             isMobile={isMobile}
           />
         );
-      case 'Unknown':
-        return (
-          <div className="p-4 text-gray-600">
-            <h3 className="text-lg font-medium mb-2">วัตถุพยานไม่ทราบชนิด</h3>
-            <p>ไม่สามารถระบุชนิดของวัตถุพยานนี้ได้</p>
-            {evidence.imageUrl && (
-              <div className="mt-4">
-                
-                <img src={evidence.imageUrl} alt="Unknown evidence" className={`${isMobile ? 'w-full max-h-48' : 'w-full max-h-64'} object-contain rounded-lg`} />
-              </div>
-            )}
-          </div>
-        );
+
       default:
         return <div className="p-4 text-red-600">ไม่พบข้อมูลวัตถุพยาน</div>;
     }
-  }, [evidence, isLoading, apiError, isMobile]);
+  }, [evidence, isLoading, apiError]);
+
 
   const renderContent = () => {
     switch (activeTab) {
       case 0:
         return renderBasicInfo();
       case 1:
-        // pass down top-level evidence.imageUrl (if present) so Gallery can show user-supplied image
-        return <Gallery evidence={evidence?.details} firearmInfo={evidence?.details} userImage={evidence?.imageUrl} isMobile={isMobile} />;
+        return (
+          <Gallery
+            evidence={evidence?.details}
+            userImage={evidence?.imageUrl}
+            isMobile={isMobile}
+          />
+        );
       case 2:
         return <History evidence={evidence?.details} isMobile={isMobile} />;
       case 3:
@@ -372,25 +373,26 @@ const EvidenceProfile = () => {
     }
   };
 
+
   if (!evidence) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center p-4">
-          <p className="text-gray-600">กำลังโหลดข้อมูลวัตถุพยาน...</p>
-        </div>
+        <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
       </div>
     );
   }
 
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <TabBar />
-      <div className="flex-1 overflow-auto">
-        {renderContent()}
-      </div>
+
+      <div className="flex-1 overflow-auto">{renderContent()}</div>
+
       <BottomBar
         analysisResult={evidence?.result}
         evidence={evidence?.details}
+        imageUrl={evidence?.imageUrl}
         fromCamera={location.state?.fromCamera}
         sourcePath={location.state?.sourcePath}
         isMobile={isMobile}

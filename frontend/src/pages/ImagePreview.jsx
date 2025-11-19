@@ -1,88 +1,94 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef
+} from 'react';
+
 import { RotateCcw, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tutorial } from '../constants/tutorialData';
 
-// ==================== CONSTANTS ====================
+// ============================================================
+// CONSTANTS
+// ============================================================
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+
 const DEFAULT_MAX_SIZE = 1600;
 const SUBMIT_TIMEOUT_MS = 180000;
 
-// ==================== UTILS ====================
+// ============================================================
+// UTIL FUNCTIONS
+// ============================================================
 const resizeImageDataUrl = (dataUrl, maxWidth = DEFAULT_MAX_SIZE, maxHeight = DEFAULT_MAX_SIZE, quality = 0.95) =>
   new Promise((resolve, reject) => {
     const img = new Image();
+
     img.onload = () => {
       let { width, height } = img;
-      if (width <= maxWidth && height <= maxHeight) {
-        resolve(dataUrl);
-        return;
-      }
-      if (width > height) {
-        if (width > maxWidth) {
-          height = Math.round(height * (maxWidth / width));
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = Math.round(width * (maxHeight / height));
-          height = maxHeight;
-        }
-      }
-      const canvas = document.createElement('canvas');
+
+      const shouldResize = width > maxWidth || height > maxHeight;
+      if (!shouldResize) return resolve(dataUrl);
+
+      const ratio = Math.min(maxWidth / width, maxHeight / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+
+      const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-        const imageType = dataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-        const resized = canvas.toDataURL(imageType, quality);
-        resolve(resized);
-      } else {
-        reject(new Error('Canvas context not available'));
-      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas context not available"));
+
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const type = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+      resolve(canvas.toDataURL(type, quality));
     };
+
     img.onerror = reject;
     img.src = dataUrl;
   });
 
-const dataUrlToBlob = async (dataUrl) => {
-  const res = await fetch(dataUrl);
-  return res.blob();
-};
+const dataUrlToBlob = async (dataUrl) => (await fetch(dataUrl)).blob();
 
-// ==================== SERVICES ====================
+// ============================================================
+// SERVICE LAYER
+// ============================================================
 const submitImageService = async ({ blob, signal }) => {
   const formData = new FormData();
-  formData.append('image', blob, 'image.jpg');
+  formData.append("image", blob, "image.jpg");
 
-  const response = await fetch(`${BASE_URL}/object-classify`, {
-    method: 'POST',
+  const res = await fetch(`${BASE_URL}/object-classify`, {
+    method: "POST",
     body: formData,
-    signal
+    signal,
   });
 
-  if (!response.ok) {
-    const err = new Error('Network response was not ok');
-    err.status = response.status;
+  if (!res.ok) {
+    const err = new Error("Network response was not ok");
+    err.status = res.status;
     throw err;
   }
-  return response.json();
+
+  return res.json();
 };
 
-// ==================== CUSTOM HOOKS ====================
+// ============================================================
+// CUSTOM HOOK
+// ============================================================
 const useImagePreviewLogic = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return window.innerWidth >= 1024;
-  });
+
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -103,91 +109,99 @@ const useImagePreviewLogic = () => {
 
   useEffect(() => {
     const state = location.state || {};
-    if (state.imageData) {
-      setImageData(state.imageData);
-      setMode(state.mode || null);
-      setResolution(state.resolution || '');
-      setFromCamera(Boolean(state.fromCamera));
-      setFromUpload(Boolean(state.uploadFromCamera));
-      setViewMode(state.viewMode || 'contain');
-    } else {
+    if (!state.imageData) {
       navigate('/home', { replace: true });
+      return;
     }
+
+    setImageData(state.imageData);
+    setMode(state.mode || null);
+    setResolution(state.resolution || '');
+    setFromCamera(!!state.fromCamera);
+    setFromUpload(!!state.fromUpload);
+    setViewMode(state.viewMode || 'contain');
   }, [location.state, navigate]);
 
-  const navigateToCandidateShow = useCallback((result, localImage) => {
-    navigate('/candidateShow', {
-      state: {
-        result,
-        image: localImage,
-        fromCamera,
-        uploadFromCameraPage: location.state?.uploadFromCameraPage || false,
-        sourcePath: location.state?.sourcePath ?? -1
-      }
-    });
-  }, [navigate, fromCamera, location.state]);
+  const navigateToCandidateShow = useCallback(
+    (result, originalImage) => {
+      navigate('/candidateShow', {
+        state: {
+          result,
+          image: originalImage,
+          fromCamera,
+          fromUpload,
+          sourcePath: location.state?.sourcePath ?? -1,
+        },
+      });
+    },
+    [navigate, fromCamera, fromUpload, location.state]
+  );
 
   const navigateToUnknownObject = useCallback(() => {
-    const unknownResult = { isUnknown: true };
     navigate('/candidateShow', {
       state: {
-        result: unknownResult,
+        result: { isUnknown: true },
         image: imageData,
         fromCamera,
-        uploadFromCameraPage: location.state?.uploadFromCameraPage || false,
+        fromUpload,
         sourcePath: location.state?.sourcePath ?? -1,
-        imageData
-      }
+      },
     });
-  }, [navigate, imageData, fromCamera, location.state]);
+  }, [navigate, imageData, fromCamera, fromUpload, location.state]);
 
   const handleRetake = useCallback(() => navigate('/camera'), [navigate]);
   const handleGoBack = useCallback(() => navigate(-1), [navigate]);
-  const handleClose = useCallback(() => navigate('/home'), [navigate]);
 
   const submitAnalysis = useCallback(async () => {
     if (!imageData) return;
+
     setIsProcessing(true);
     setError(null);
 
-    let imageToSend = imageData;
-    const isLargeImage = imageData.length > 1000000;
+    let processedImage = imageData;
 
-    if (isLargeImage) {
-      try {
-        const resized = await resizeImageDataUrl(imageData, DEFAULT_MAX_SIZE, DEFAULT_MAX_SIZE, 0.95);
-        if (resized.length < imageData.length * 0.9) {
-          imageToSend = resized;
-        } else {
-          console.debug('Resize not effective, using original image');
-        }
-      } catch (resizeErr) {
-        console.error('Resize failed', resizeErr);
+    try {
+      if (imageData.length > 1_000_000) {
+        processedImage = await resizeImageDataUrl(imageData);
       }
+    } catch (e) {
+      console.warn("Resize failed", e);
     }
 
     let blob;
     try {
-      blob = await dataUrlToBlob(imageToSend);
-    } catch (blobErr) {
-      console.error('Blob creation failed', blobErr);
+      blob = await dataUrlToBlob(processedImage);
+    } catch (e) {
+      console.error("Blob creation failed", e);
       navigateToUnknownObject();
       setIsProcessing(false);
       return;
     }
 
     abortControllerRef.current = new AbortController();
-    const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), SUBMIT_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => {
+      abortControllerRef.current?.abort();
+    }, SUBMIT_TIMEOUT_MS);
 
     try {
-      const result = await submitImageService({ blob, signal: abortControllerRef.current.signal });
+      const res = await submitImageService({
+        blob,
+        signal: abortControllerRef.current.signal,
+      });
+
       clearTimeout(timeoutId);
 
-      // Extract cropped image safely
       try {
-        if (Array.isArray(result.objects) && result.objects.length) {
-          const drugObj = result.objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug');
-          const anyCrop = result.objects.find(o => o.cropped_base64);
+        const detectionType = res.objects?.[0]?.detection_type || res.detectionType || '';
+        document.cookie = `detectionType=${encodeURIComponent(detectionType)}; path=/; max-age=${60 * 60}`;
+      } catch (cookieErr) {
+        console.warn('Failed to set detectionType cookie', cookieErr);
+      }
+
+      try {
+        if (Array.isArray(res.objects) && res.objects.length) {
+          const drugObj = res.objects.find(o => o.cropped_base64 && String(o.detection_type).toLowerCase() === 'drug');
+          const anyCrop = res.objects.find(o => o.cropped_base64);
           const responseCrop = (drugObj && drugObj.cropped_base64) || (anyCrop && anyCrop.cropped_base64) || null;
           if (responseCrop) setCroppedImage(responseCrop);
         }
@@ -195,43 +209,21 @@ const useImagePreviewLogic = () => {
         console.warn('Failed to extract cropped image from response', e);
       }
 
-      // set cookie for detection type (best-effort)
-      try {
-        const detectionType = result.objects?.[0]?.detection_type || result.detectionType || '';
-        document.cookie = `detectionType=${encodeURIComponent(detectionType)}; path=/; max-age=${60 * 60}`;
-      } catch (cookieErr) {
-        console.warn('Failed to set detectionType cookie', cookieErr);
-      }
+      navigateToCandidateShow(res, imageData);
 
-      if (!result) {
-        console.error('Empty analysis result');
-        navigateToUnknownObject();
-        setIsProcessing(false);
-        return;
-      }
-
-      navigateToCandidateShow(result, imageData);
     } catch (err) {
-      console.error('Submit failed', err);
-      if (err?.name === 'AbortError') {
-        console.warn(`Request aborted after ${SUBMIT_TIMEOUT_MS}ms`);
-      }
+      console.error(err);
       navigateToUnknownObject();
     } finally {
       setIsProcessing(false);
-      clearTimeout();
-      if (abortControllerRef.current) {
-        abortControllerRef.current = null;
-      }
+      abortControllerRef.current = null;
     }
-  }, [imageData, navigateToCandidateShow, navigateToUnknownObject]);
+  }, [imageData, navigateToUnknownObject, navigateToCandidateShow]);
 
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 
@@ -249,46 +241,47 @@ const useImagePreviewLogic = () => {
     setError,
     handleRetake,
     handleGoBack,
-    handleClose,
-    submitAnalysis
+    submitAnalysis,
   };
 };
 
-// ==================== PRESENTATIONAL / SMALL COMPONENTS ====================
-const ErrorBanner = React.memo(({ error, className = '' }) => {
+// ============================================================
+// UI COMPONENTS
+// ============================================================
+const ErrorBanner = React.memo(({ error }) => {
   if (!error) return null;
   return (
-    <div className={className}>
-      <div className="bg-red-500 text-white p-3 rounded-lg text-center">{error}</div>
+    <div className="bg-red-500 text-white p-3 rounded-lg text-center">
+      {error}
     </div>
   );
 });
 
+// -------- Mobile Components --------
 const MobileHeader = React.memo(({ fromCamera, onBack, resolution }) => (
-  <div className="relative p-4 flex justify-start items-center bg-white">
-    <button
-      onClick={onBack}
-      className="p-2 rounded-full hover:bg-gray-800/50 transition-colors"
-      aria-label={fromCamera ? 'Retake photo' : 'Go back'}
-    >
+  <div className="relative p-4 flex items-center bg-white">
+    <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-200">
       <ArrowLeft className="w-6 h-6 text-black" />
     </button>
-    <span className="text-black font-normal ml-2">ตรวจสอบภาพ</span>
+    <span className="ml-2 text-black">ตรวจสอบภาพ</span>
     {resolution && <span className="ml-auto text-xs text-gray-400">{resolution}</span>}
   </div>
 ));
 
 const MobileImageBlock = React.memo(({ title, src, alt, tutorial }) => (
-  <div className="flex flex-col bg-white rounded-lg shadow-lg p-3 m-4 mb-0">
+  <div className="bg-white rounded-lg shadow-lg p-3 m-4 mb-0">
     <span className="text-gray-500 text-xl mb-2">{title}</span>
-    <div className="flex justify-center items-center mb-4 h-auto overflow-y-auto">
+    <div className="flex justify-center mb-4">
       <img src={src} alt={alt} className="border-2 border-dashed border-red-800 px-4 py-3 w-full object-contain rounded-lg" />
     </div>
+
     {tutorial && (
       <>
         <span className="ml-auto text-xs text-gray-400">{tutorial.description}</span>
         <ul className="list-disc text-xs pl-5 mt-2 text-gray-400">
-          {tutorial.bullets.map((b, i) => <li key={i} className="mb-1">{b}</li>)}
+          {tutorial.bullets.map((b, i) => (
+            <li key={i}>{b}</li>
+          ))}
         </ul>
       </>
     )}
@@ -296,13 +289,13 @@ const MobileImageBlock = React.memo(({ title, src, alt, tutorial }) => (
 ));
 
 const MobileFooter = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera }) => (
-  <div className="p-6 bg-gray-900 space-y-4 w-full flex flex-col">
+  <div className="p-6 bg-gray-900 space-y-4">
     <button
       onClick={onSubmit}
       disabled={isProcessing}
-      className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
-      aria-busy={isProcessing}
-      aria-label="Submit image for analysis"
+      className={`w-full py-4 rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors ${
+        isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'
+      }`}
     >
       <Send className="w-5 h-5" />
       <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
@@ -311,8 +304,7 @@ const MobileFooter = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera 
     <button
       onClick={onRetake}
       disabled={isProcessing}
-      className="w-full py-4 bg-gray-800 hover:bg-gray-700 rounded-full text-white font-medium flex items-center justify-center space-x-2 transition-colors"
-      aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
+      className="w-full py-4 bg-gray-800 rounded-full text-white flex items-center justify-center space-x-2"
     >
       <RotateCcw className="w-5 h-5" />
       <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
@@ -320,104 +312,85 @@ const MobileFooter = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera 
   </div>
 ));
 
-const DesktopHeader = React.memo(({ onBack, fromCamera, resolution }) => (
-  <div className="p-4 flex justify-start items-center bg-black">
-    <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-800/50 transition-colors" aria-label={fromCamera ? 'Retake photo' : 'Go back'}>
-      <ArrowLeft className="w-6 h-6 text-white" />
-    </button>
-    <span className="text-white font-medium text-xl ml-4">ตรวจสอบภาพ</span>
-    {resolution && <span className="ml-auto text-sm text-gray-400">{resolution}</span>}
-  </div>
-));
-
-const DesktopBody = React.memo(({ imageData, viewMode, mode, fromCamera }) => (
-  <div className="w-8/12 bg-black flex items-center justify-center p-4 overflow-hidden">
-    <div className="relative h-full w-full flex items-center justify-center">
-      <img src={imageData} alt="Preview" className={`max-h-full max-w-full object-${viewMode} border border-gray-800`} />
-      {mode && !fromCamera && (
-        <div className="absolute top-4 right-4">
-          <span className="px-4 py-2 rounded-full bg-black/50 text-white">{mode === 'ยาเสพติด' ? '🔍 ตรวจจับยาเสพติด' : '🔍 ตรวจจับอาวุธปืน'}</span>
-        </div>
-      )}
-    </div>
-  </div>
-));
-
-const DesktopSidebar = React.memo(({ isProcessing, onSubmit, onRetake, fromCamera }) => (
-  <div className="w-4/12 bg-gray-900 p-6 flex flex-col">
-    <div className="flex-1" />
-    <div className="space-y-4">
-      <button
-        onClick={onSubmit}
-        disabled={isProcessing}
-        className={`w-full py-4 ${isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'} rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors`}
-        aria-busy={isProcessing}
-        aria-label="Submit image for analysis"
-      >
-        <Send className="w-5 h-5" />
-        <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
-      </button>
-
-      <button
-        onClick={onRetake}
-        disabled={isProcessing}
-        className="w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium flex items-center justify-center space-x-2 transition-colors"
-        aria-label={fromCamera ? 'Retake photo' : 'Choose another image'}
-      >
-        <RotateCcw className="w-5 h-5" />
-        <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
-      </button>
-    </div>
-  </div>
-));
-
-// ==================== COMPOSITE PRESENTATIONALS ====================
-const MobilePreview = React.memo(function MobilePreview({
-  imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, onSubmit, tutorial
-}) {
-  return (
-    <div className="bg-slate-100 fixed inset-0 flex flex-col h-screen justify-between" role="main" aria-label="Image preview mobile">
+const MobilePreview = React.memo(
+  ({ imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, onSubmit, tutorial }) => (
+    <div className="bg-slate-100 fixed inset-0 flex flex-col">
       <MobileHeader fromCamera={fromCamera} onBack={handleRetakeOrBack} resolution={resolution} />
 
       <div className="flex-1 overflow-y-auto">
-        {error && (
-          <div className="absolute left-0 right-0 mx-auto w-full max-w-md px-4">
-            <ErrorBanner error={error} />
-          </div>
-        )}
-
+        {error && <ErrorBanner error={error} />}
         <MobileImageBlock title="ภาพที่จะทำการวิเคราะห์" src={imageData} alt="Preview" />
-        <div className="mt-2" />
-        <MobileImageBlock title="ภาพตัวอย่าง" src={tutorial.image} alt="Tutorial example" tutorial={tutorial} />
+        <MobileImageBlock title="ภาพตัวอย่าง" src={tutorial.image} alt="Tutorial" tutorial={tutorial} />
       </div>
 
-      <MobileFooter isProcessing={isProcessing} onSubmit={onSubmit} onRetake={handleRetakeOrBack} fromCamera={fromCamera} />
+      <MobileFooter
+        isProcessing={isProcessing}
+        onSubmit={onSubmit}
+        onRetake={handleRetakeOrBack}
+        fromCamera={fromCamera}
+      />
     </div>
-  );
-});
+  )
+);
 
-const DesktopPreview = React.memo(function DesktopPreview({
-  imageData, viewMode, mode, fromCamera, resolution, isProcessing, error, onSubmit, handleRetakeOrBack
-}) {
-  return (
-    <div className="fixed inset-0 bg-gray-900 flex flex-col h-screen" role="main" aria-label="Image preview desktop">
-      <DesktopHeader onBack={handleRetakeOrBack} fromCamera={fromCamera} resolution={resolution} />
+// -------- Desktop Components --------
+const DesktopPreview = React.memo(
+  ({ imageData, viewMode, mode, fromCamera, resolution, isProcessing, error, onSubmit, handleRetakeOrBack }) => (
+    <div className="fixed inset-0 bg-gray-900 flex flex-col">
+      {/* HEADER */}
+      <div className="p-4 flex items-center bg-black">
+        <button onClick={handleRetakeOrBack} className="p-2 rounded-full hover:bg-gray-800/50">
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <span className="ml-4 text-white text-xl">ตรวจสอบภาพ</span>
+        {resolution && <span className="ml-auto text-sm text-gray-400">{resolution}</span>}
+      </div>
 
+      {/* BODY */}
       <div className="flex-1 flex overflow-hidden">
-        <DesktopBody imageData={imageData} viewMode={viewMode} mode={mode} fromCamera={fromCamera} />
-        <DesktopSidebar isProcessing={isProcessing} onSubmit={onSubmit} onRetake={handleRetakeOrBack} fromCamera={fromCamera} />
+        <div className="w-8/12 bg-black flex items-center justify-center p-4">
+          <img
+            src={imageData}
+            alt="Preview"
+            className={`max-h-full max-w-full object-${viewMode} border border-gray-800`}
+          />
+        </div>
+
+        <div className="w-4/12 bg-gray-900 p-6 flex flex-col">
+          <div className="flex-1" />
+          <div className="space-y-4">
+            <button
+              onClick={onSubmit}
+              disabled={isProcessing}
+              className={`w-full py-4 rounded-lg text-white font-medium flex items-center justify-center space-x-2 ${
+                isProcessing ? 'bg-gray-500' : 'bg-[#990000] hover:bg-red-800'
+              }`}
+            >
+              <Send className="w-5 h-5" />
+              <span>{isProcessing ? 'กำลังวิเคราะห์...' : 'ส่งภาพให้ AI วิเคราะห์'}</span>
+            </button>
+
+            <button
+              onClick={handleRetakeOrBack}
+              disabled={isProcessing}
+              className="w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white flex items-center justify-center space-x-2"
+            >
+              <RotateCcw className="w-5 h-5" />
+              <span>{fromCamera ? 'ถ่ายภาพใหม่' : 'เลือกภาพใหม่'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="absolute bottom-20 left-0 right-0 mx-auto w-full max-w-md">
-          <ErrorBanner error={error} />
-        </div>
-      )}
+      {error && <div className="absolute bottom-20 left-0 right-0 mx-auto"><ErrorBanner error={error} /></div>}
     </div>
-  );
-});
+  )
+);
 
-// ==================== MAIN COMPONENT ====================
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+
 const ImagePreview = () => {
   const {
     isDesktop,
@@ -431,26 +404,38 @@ const ImagePreview = () => {
     setError,
     handleRetake,
     handleGoBack,
-    handleClose,
-    submitAnalysis
+    submitAnalysis,
   } = useImagePreviewLogic();
 
   const handleRetakeOrBack = useCallback(() => {
-    if (fromCamera) handleRetake();
-    else handleGoBack();
+    if (fromCamera) return handleRetake();
+    return handleGoBack();
   }, [fromCamera, handleRetake, handleGoBack]);
 
-  const commonProps = useMemo(() => ({
-    imageData,
-    resolution,
-    isProcessing,
-    error,
-    fromCamera,
-    handleRetakeOrBack,
-    onSubmit: submitAnalysis,
-    mode,
-    viewMode
-  }), [imageData, resolution, isProcessing, error, fromCamera, handleRetakeOrBack, submitAnalysis, mode, viewMode]);
+  const commonProps = useMemo(
+    () => ({
+      imageData,
+      resolution,
+      isProcessing,
+      error,
+      fromCamera,
+      handleRetakeOrBack,
+      onSubmit: submitAnalysis,
+      mode,
+      viewMode,
+    }),
+    [
+      imageData,
+      resolution,
+      isProcessing,
+      error,
+      fromCamera,
+      handleRetakeOrBack,
+      submitAnalysis,
+      mode,
+      viewMode,
+    ]
+  );
 
   if (!imageData) return null;
 
@@ -460,4 +445,5 @@ const ImagePreview = () => {
     <MobilePreview {...commonProps} tutorial={Tutorial} />
   );
 };
+
 export default ImagePreview;
