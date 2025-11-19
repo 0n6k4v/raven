@@ -330,7 +330,7 @@ const FilterPopup = memo(function FilterPopup({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4" role="dialog" aria-modal="true" aria-label="ตัวกรองผู้ใช้งาน">
-      <div className="bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg shadow-lg border border-gray-200 flex flex-col overflow-hidden">
+      <div className="bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg border border-gray-200 md:border-gray-300 md:shadow-none flex flex-col overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
           <h2 className="text-xl md:text-2xl font-semibold">เลือกตัวกรองผลลัพธ์</h2>
           <button onClick={handleClose} className="text-gray-500 hover:text-gray-700" aria-label="ปิดตัวกรอง">
@@ -439,7 +439,7 @@ const Popup = memo(function Popup({
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" role="dialog" aria-modal="true" aria-label="แจ้งเตือน">
-      <div className="bg-white rounded-lg shadow-lg flex flex-col items-center justify-center w-80 h-64 relative border border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200 md:border-gray-300 md:shadow-none flex flex-col items-center justify-center w-80 h-64 relative">
          {(type === 'success' || type === 'fail') && (
            <button
              onClick={onClose}
@@ -525,7 +525,7 @@ const DesktopLayout = memo(function DesktopLayout(props) {
           <SearchBox searchTerm={searchTerm} onSearchChange={handleSearch} />
           <button
             onClick={() => setIsFilterOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100 whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-100 whitespace-nowrap"
             aria-label="เปิดตัวกรอง"
             type="button"
           >
@@ -545,11 +545,13 @@ const DesktopLayout = memo(function DesktopLayout(props) {
         <FilterTags labels={filterLabels} onRemove={removeFilter} />
       </div>
       <div className="px-6 pb-6 flex flex-col flex-grow overflow-hidden">
-        <div className="bg-white rounded shadow-md border border-gray-200 flex flex-col flex-grow overflow-hidden">
+        {/* Desktop-only: remove shadow and use a slightly stronger border color for better separation */}
+        <div className="bg-white rounded border border-gray-200 md:border-gray-300 md:shadow-none flex flex-col flex-grow overflow-hidden">
           <div className="flex-grow overflow-auto">
             <table className="w-full table-fixed border-collapse" role="table" aria-label="ตารางผู้ใช้งาน">
               <thead>
-                <tr className="bg-gray-200 sticky top-0 z-[5]">
+                {/* Add a subtle bottom border to the sticky header for clearer separation on Desktop */}
+                <tr className="bg-gray-200 sticky top-0 z-[5] md:border-b md:border-gray-300">
                   <th className="p-3 text-left font-semibold w-[20%]">รหัสประจำตัวผู้ใช้:</th>
                   <th className="p-3 text-left font-semibold w-[20%]">ตำแหน่ง:</th>
                   <th className="p-3 text-left font-semibold w-[20%]">ชื่อ-สกุล:</th>
@@ -570,7 +572,7 @@ const DesktopLayout = memo(function DesktopLayout(props) {
                   {currentUsers.map((user, index) => {
                     const key = getUserId(user) ?? user.user_code ?? index;
                     return (
-                      <tr key={key} className="border-t border-gray-200 hover:bg-red-50 transition-colors">
+                      <tr key={key} className="border-t border-gray-200 hover:bg-red-50 transition-colors focus-within:ring-2 focus-within:ring-red-100">
                         <td className="p-3">{getUserId(user) ?? '-'}</td>
                         <td className="p-3">{user.role?.role_name ?? (user.role || '-')}</td>
                         <td className="p-3">{`${user.title || ''} ${user.firstname || ''} ${user.lastname || ''}`.trim() || '-'}</td>
@@ -664,7 +666,7 @@ const MobileLayout = memo(function MobileLayout(props) {
         </div>
       </div>
       <FilterTags labels={filterLabels} onRemove={removeFilter} />
-      <div className="bg-white rounded-t shadow overflow-auto border border-gray-200 flex-grow">
+      <div className="bg-white rounded-t shadow md:shadow-none overflow-auto border border-gray-200 md:border-gray-300 flex-grow">
         {loading ? (
           <div className="p-4 text-center text-gray-500">
             กำลังโหลด...
@@ -708,7 +710,7 @@ const MobileLayout = memo(function MobileLayout(props) {
                       </svg>
                     </button>
                     {activeMenu === id && (
-                      <div className="absolute right-0 z-10 w-36 bg-white rounded shadow-lg border border-gray-200" role="menu">
+                      <div className="absolute right-0 z-10 w-36 bg-white rounded shadow-lg md:shadow-none border border-gray-200 md:border-gray-300 focus:outline-none" role="menu">
                         <button
                           onClick={() => {
                             handleViewDetail(user);

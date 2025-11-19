@@ -66,6 +66,28 @@
 * **Reference:**
     * Tailwind CSS Animation docs: `https://tailwindcss.com/docs/animation`
 
+### ☐ `TASK-003`: [UX / Mobile] ปรับปรุงการแสดงผลไฟล์ `UserProfile.jsx` บน Mobile
+
+* **ID:** `TASK-003`
+* **Status:** `To Do`
+* **Priority:** Medium
+* **Assignee:** `@Frontend`
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/UserProfile.jsx`
+* **Description:**
+    ปรับปรุงมุมมองโปรไฟล์ผู้ใช้บนมือถือให้ใช้งานสะดวกและอ่านง่ายขึ้น โดยคำนึงถึงการจัดวาง (layout), การตัดคำและการแสดงผลของอีเมล์/ชื่อที่ยาว รวมถึง touch targets ของปุ่มต่าง ๆ
+* **Changes / Suggestions:**
+    - ลดขนาด avatar บนหน้าจอมือถือเป็น `w-24 h-24` และเก็บ `w-28 h-28` บนหน้าจอขนาดเล็กขึ้นไป
+    - เพิ่ม margin (`mx-3 my-4`) และลด padding บางส่วน (`px-4 py-5`) เพื่อไม่ให้ UI ชิดขอบจอ
+    - แปลงแผนผังข้อมูลเป็น `grid grid-cols-1 sm:grid-cols-2` เพื่อให้ข้อมูลล้นได้อย่างเป็นระเบียบ
+    - ปรับให้ `email` และตัวหนังสือยาวมี `break-words` และ `max-w-[65%]` เพื่อไม่ให้หลุดขอบจอ
+    - เพิ่ม `aria-label` และ `focus` styles เพื่อรองรับการเข้าถึงและขนาด touch target
+* **Files changed (planned):** `frontend/src/pages/Admin/SuperAdmin/UserProfile.jsx`
+* **To verify:**
+    1. เปิดหน้า `/user-profile/:id` บนมือถือหรือใน responsive mode (mobile width)
+    2. ตรวจสอบว่า avatar, ชื่อ, อีเมล์, และฟิลด์ต่าง ๆ ไม่ล้นออกขอบ และข้อความยาวจะตัด/wrap ถูกต้อง
+    3. ตรวจสอบ touch target ของปุ่มดูภาพเต็ม และปุ่มย้อนกลับว่ากดง่าย
+
+### ☐ `TASK-004`: [UX / Mobile] ปรับปรุงการแสดงผลไฟล์ `UserManagement.jsx` บน Mobile
 
 ---
 

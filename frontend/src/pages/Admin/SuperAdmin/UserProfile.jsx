@@ -73,7 +73,7 @@ const FullscreenModal = React.memo(function FullscreenModal({ open, onClose, chi
 
   if (!open) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={labelledBy} className="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50">
+    <div role="dialog" aria-modal="true" aria-labelledby={labelledBy} className="fixed inset-0 bg-black backdrop-blur-xs opacity-90 flex flex-col items-center justify-center z-50">
       <button
         ref={closeRef}
         type="button"
@@ -186,7 +186,8 @@ const DesktopLayout = React.memo(function DesktopLayout({ user }) {
           </div>
         </div>
 
-        <button onClick={onBack} className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg transition z-50" aria-label="ย้อนกลับ">
+        {/* Desktop Back Button */}
+        <button onClick={onBack} className="fixed bottom-8 right-8 bg-[#990000] hover:bg-[#7a0000] text-white px-6 py-3 rounded-full shadow-lg transition z-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#b30000]" aria-label="ย้อนกลับ">
           ย้อนกลับ
         </button>
       </div>
@@ -219,7 +220,8 @@ const MobileLayout = React.memo(function MobileLayout({ user }) {
   return (
     <div className="bg-gray-50 min-h-screen pb-20 text-sm text-gray-700">
       <header className="bg-white px-4 py-3 flex items-center shadow-sm">
-        <button onClick={onBack} className="p-2 rounded-md text-gray-700 hover:bg-gray-100" aria-label="ย้อนกลับ">
+        {/* Mobile Header */}
+        <button onClick={onBack} className="p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#b30000]" aria-label="ย้อนกลับ">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -228,8 +230,8 @@ const MobileLayout = React.memo(function MobileLayout({ user }) {
         <div className="w-8" aria-hidden="true" />
       </header>
 
-      <main className="px-4 mt-6">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <main>
+        <div className="bg-white rounded-xl">
           <div className="px-6 py-6 flex flex-col items-center">
             <button onClick={onToggleFull} aria-label="ดูรูปโปรไฟล์เต็ม" className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
               {hasProfileImage
