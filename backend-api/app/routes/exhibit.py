@@ -43,6 +43,7 @@ async def upload_narcotic_image(
     
     try:
         cloudinary_result = await upload_image_to_cloudinary(file)
+        logger.debug("[routes.exhibit] Uploaded narcotic image result: public_id=%s, url=%s", cloudinary_result.get('public_id'), cloudinary_result.get('secure_url'))
         
         image_data = NarcoticExampleImageBase(
             narcotic_id=narcotic_id,

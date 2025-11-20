@@ -20,6 +20,7 @@ class User(BaseModel):
     email: EmailStr
     department: Optional[str] = None
     profile_image_url: Optional[str] = None
+    profile_image_public_id: Optional[str] = None
     role: Optional[RoleBase] = None
 
     class Config:
@@ -35,6 +36,7 @@ class UserBase(BaseModel):
     email: EmailStr
     department: Optional[str] = None
     profile_image_url: Optional[str] = None
+    profile_image_public_id: Optional[str] = None
 
 class PaginatedUserResponse(BaseModel):
     users: List[User]
@@ -55,6 +57,7 @@ class UserResponse(UserBase):
     updated_at: datetime
     role: Optional[RoleBase] = None
     permissions: Optional[List[UserPermissionResponse]] = None
+    profile_image_public_id: Optional[str] = None
 
     class Config:
         from_attributes = True

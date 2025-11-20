@@ -136,7 +136,7 @@ const ImageMenu = React.memo(({ onUpload, onOpenCamera, onRemove, hasPreview }) 
 
 const DesktopLayout = React.memo(({
   formData, handleChange, handleSubmit, handleCancel, roles, loading, handleImageChange, handleRemoveImage, profilePreview,
-  onOpenCamera
+  onOpenCamera, onOpenImage
 }) => {
   const [showImageMenu, setShowImageMenu] = useState(false);
   const imageMenuRef = useRef(null);
@@ -168,7 +168,14 @@ const DesktopLayout = React.memo(({
 
           <div className="flex justify-center mb-6">
             <div className="relative" ref={imageMenuRef}>
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300" aria-hidden={!profilePreview}>
+              <div
+                className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300 cursor-pointer"
+                aria-hidden={!profilePreview}
+                onClick={() => profilePreview && onOpenImage && onOpenImage()}
+                role={profilePreview ? 'button' : undefined}
+                tabIndex={profilePreview ? 0 : undefined}
+                onKeyDown={(e) => { if (e.key === 'Enter' && profilePreview) onOpenImage && onOpenImage() }}
+              >
                 {profilePreview ? (
                   <img src={profilePreview} alt="Profile preview" className="w-full h-full object-cover" />
                 ) : (
@@ -314,8 +321,8 @@ const DesktopLayout = React.memo(({
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <button type="button" className="px-6 py-2 border border-red-500 text-red-500 rounded" onClick={handleCancel}>ยกเลิก</button>
-              <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded">ยืนยัน</button>
+              <button type="button" className="px-6 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100" onClick={handleCancel}>ยกเลิก</button>
+              <button type="submit" className="px-6 py-2 bg-[#990000] hover:bg-[#b30000] text-white rounded">ยืนยัน</button>
             </div>
           </form>
         </div>
@@ -326,7 +333,7 @@ const DesktopLayout = React.memo(({
 
 const MobileLayout = React.memo(({
   formData, handleChange, handleSubmit, handleCancel, roles, loading, handleImageChange, handleRemoveImage, profilePreview,
-  onOpenCamera
+  onOpenCamera, onOpenImage
 }) => {
    const [showImageMenu, setShowImageMenu] = useState(false);
    const imageMenuRef = useRef(null);
@@ -355,7 +362,13 @@ const MobileLayout = React.memo(({
        <div className="flex-1 flex flex-col items-center justify-center bg-white">
          <div className="w-full py-4 flex justify-center">
            <div className="relative" ref={imageMenuRef}>
-             <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300">
+             <div
+               className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300 cursor-pointer"
+               onClick={() => profilePreview && onOpenImage && onOpenImage()}
+               role={profilePreview ? 'button' : undefined}
+               tabIndex={profilePreview ? 0 : undefined}
+               onKeyDown={(e) => { if (e.key === 'Enter' && profilePreview) onOpenImage && onOpenImage() }}
+             >
                {profilePreview ? <img src={profilePreview} alt="Profile preview" className="w-full h-full object-cover" /> : <FaImage className="text-gray-400 text-3xl" />}
              </div>
              <div className="absolute bottom-0 right-0">
@@ -469,8 +482,8 @@ const MobileLayout = React.memo(({
              />
            </div>
            <div className="flex justify-end space-x-2 pt-2">
-             <button type="button" className="px-4 py-2 border border-red-500 text-red-500 rounded text-sm" onClick={handleCancel}>ยกเลิก</button>
-             <button type="submit" className="px-4 py-2 bg-green-500 text-white rounded text-sm">ยืนยัน</button>
+             <button type="button" className="px-4 py-2 border border-gray-400 text-gray-700 rounded text-sm hover:bg-gray-100" onClick={handleCancel}>ยกเลิก</button>
+             <button type="submit" className="px-4 py-2 bg-[#990000] hover:bg-[#b30000] text-white rounded text-sm">ยืนยัน</button>
            </div>
          </form>
        </div>
@@ -488,6 +501,7 @@ const CreateUser = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -570,6 +584,7 @@ const CreateUser = () => {
     handleRemoveImage,
     profilePreview,
     onOpenCamera: () => setShowCamera(true),
+    onOpenImage: () => setFullScreen(true),
   }), [formData, handleChange, handleSubmit, handleCancel, roles, rolesLoading, loading, handleImageChange, handleRemoveImage, profilePreview]);
 
   return (
@@ -587,6 +602,31 @@ const CreateUser = () => {
         {error && <div className="text-red-500 p-2 text-center" role="alert">{error}</div>}
         {success && <div className="text-green-500 p-2 text-center" role="status">{success}</div>}
       </div>
+
+      {fullScreen && (
+        <div 
+          className="fixed inset-0 bg-black opacity-90 backdrop-blur-xs flex items-center justify-center z-50"
+          onClick={() => setFullScreen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="แสดงรูปโปรไฟล์แบบเต็มหน้าจอ"
+        >
+          <button 
+            onClick={() => setFullScreen(false)}
+            className="absolute top-4 right-4 text-white text-4xl w-12 h-12 flex items-center justify-center hover:bg-white hover:bg-opacity-10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+            aria-label="ปิด"
+          >
+            ×
+          </button>
+          <div className="w-4/5 h-4/5 flex items-center justify-center p-4">
+            {profilePreview ? (
+              <img src={profilePreview} alt="Profile preview" className="max-w-full max-h-full object-contain" />
+            ) : (
+              <FaImage className="text-white text-6xl" aria-hidden />
+            )}
+          </div>
+        </div>
+      )}
 
       {showCamera && (
         <ProfileCamera

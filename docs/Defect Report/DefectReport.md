@@ -89,6 +89,81 @@
 
 ### ☐ `TASK-004`: [UX / Mobile] ปรับปรุงการแสดงผลไฟล์ `UserManagement.jsx` บน Mobile
 
+### ☐ `TASK-005`: [UX / Frontend] ปรับปรุง UX/UI หน้า `EditUserProfile.jsx`
+
+* **ID:** `TASK-005`
+* **Status:** `To Do`
+* **Priority:** Medium
+* **Assignee:** `@Frontend`
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/EditUserProfile.jsx`
+* **Description:**
+    ปรับปรุงประสบการณ์ผู้ใช้ (UX) และหน้าตา (UI) ของหน้าจอแก้ไขโปรไฟล์ผู้ใช้ให้สอดคล้องกับหน้า `UserProfile.jsx` และแนวทาง UX ของโปรเจค เน้นความเข้าถึง (accessibility), ความสอดคล้องของปุ่ม/ป้าย, การตอบสนองบนอุปกรณ์ต่าง ๆ (responsive) และฟีเจอร์ย่อยที่สำคัญ เช่น การอัปโหลดรูป, การแจ้งเตือนข้อผิดพลาด และ UX ของฟอร์ม
+* **Changes / Suggestions:**
+    - ปรับให้ใช้คอมโพเนนต์ร่วมกัน (Avatar, FullscreenModal, FormInput/FormSelect) หากยังไม่มี ให้แยกเป็น component เพื่อ reuse
+    - เพิ่ม skeleton loading / spinner ตอนรอข้อมูล เพื่อให้การเปลี่ยนหน้ารู้สึกลื่นขึ้น
+    - ปรับ responsive spacing (padding/margin) และ grid ให้เหมาะกับมือถือ (mobile-first) เช่นปรับ avatar เป็น `w-24 h-24` บนมือถือ
+    - เพิ่ม inline validation (real-time) สำหรับ email, password length, และ role selection; แสดงข้อความที่ชัดเจนด้านล่าง field
+    - ปรับปุ่ม Save/Cancel ให้มีขนาด touch-friendly และมีสถานะ disabled ระหว่าง submit หรือเมื่อไม่มีการแก้ไข
+    - ปรับ UX รูปโปรไฟล์: รองรับ preview ขนาด, confirm dialog ก่อนลบรูป, progress indicator ขณะอัปโหลด, fallback image และ `object-cover` เพื่อไม่ให้ภาพบิดเบี้ยว
+    - เพิ่มการแจ้งเตือนแบบ `aria-live` สำหรับ success/error เพื่อรองรับ screen readers
+    - แสดง confirmation modal ถ้า user พยายามออกจากหน้าโดยยังมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก
+    - ตรวจสอบการเรียก API ให้สอดคล้องกับหน้า `UserProfile.jsx` (เช่น `fetchJson`), แยก/centralize error handling, และแสดงข้อความข้อผิดพลาดจาก API ให้ผู้ใช้เข้าใจได้
+* **Files changed (planned):**
+    - `frontend/src/pages/Admin/SuperAdmin/EditUserProfile.jsx`
+    - (Optional) `frontend/src/components/common/Avatar.jsx`, `Frontend/src/components/common/FullscreenModal.jsx`, `frontend/src/components/common/FormInput.jsx` — หากแยกเพื่อ reuse
+* **To verify (QA):**
+    1. เปิดหน้า `/admin/super-admin/edit-user/:id` บน desktop และมือถือ: ตรวจสอบว่าข้อมูลโหลดแล้วแสดง skeleton แล้วเปลี่ยนเป็นข้อมูลจริง (loading -> content)
+    2. ทดสอบการอัปโหลดรูป: preview แสดง, progress/loader ทำงาน, ยืนยันการลบแสดง confirm dialog
+    3. ทดสอบ validation: email และ password แสดง inline error ขณะที่พิมพ์ และ Save ถูก disabled จนกว่าฟอร์มถูกแก้ไขและ valid
+    4. ทดสอบการส่งฟอร์ม: ข้อความ success และ error จะแสดงผ่าน toast (aria-live) และ navigate กลับเมื่อบันทึกสำเร็จ
+    5. ทดสอบ keyboard navigation และ screen reader: ทุก field มี label, modal มี focus trap และ toast มี `aria-live`
+    6. ตรวจสอบว่า API เรียกออกด้วย `fetchJson` และ error handling แสดง message ที่เหมาะสม
+
+### ☐ `TASK-006`: [UX / Frontend] `UserManagement.jsx` — เรียง Row ตาม `user_id`
+
+* **ID:** `TASK-006`
+* **Status:** `To Do`
+* **Priority:** Medium
+* **Assignee:** `@Frontend`
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx`
+* **Description:**
+    ปรับปรุงการแสดงผลตารางผู้ใช้งาน (`UserManagement.jsx`) ให้เรียงแถวข้อมูลตามลำดับ `user_id` (ตัวอักษร/ตัวเลขเรียงตามลำดับ) เป็นค่าเริ่มต้น เพื่อให้ง่ายต่อการค้นหาและอ้างอิง ID ของผู้ใช้
+* **Changes / Suggestions:**
+    - หากตารางใช้ client-side sorting: ให้ตั้งค่า default sort key เป็น `user_id` (อาจเรียงขึ้นหรือลงได้ตาม requirement)
+    - หากตารางใช้ server-side sorting: ให้เพิ่ม query param `sort_by=user_id&sort_dir=asc` หรือปรับ backend pagination API เพื่อรองรับ `sort_by`/`sort_dir` และเปลี่ยน default sort เป็น `user_id`
+    - ตรวจสอบข้อมูลที่ส่งจาก backend ว่ามี `user_id` field อยู่หรือไม่ (ต้องมีเพื่อจัดเรียง)
+    - หากต้องการ sort แบบ numeric/semantic (เช่น U00002, U00010), ให้แยกพื้นที่ parser หรือใช้ natural sort algorithm (e.g., pad numbers or implement natural sorting)
+* **Files changed (planned):**
+    - `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx`
+    - (Optional) `frontend/src/components/Table/` if using a shared table component
+* **To verify (QA):**
+    1. เปิด `UserManagement` บน desktop: ตรวจสอบว่าแถวเรียงตาม `user_id` เริ่มต้น (ตัวอย่าง: `U00001, U00002, U00010`)
+    2. หากเป็น server-side sort: ยืนยันว่าพารามิเตอร์ `sort_by=user_id` ถูกส่งใน request และ backend ตอบ sorted result
+    3. ทดสอบการค้นหาและ pagination ให้แน่ใจว่ายังคงทำงานถูกต้องเมื่อมีการ sort
+
+### ☐ `TASK-007`: [UX / Frontend] `UserManagement.jsx` — เพิ่ม Column "แก้ไขล่าสุด" (Last Updated)
+
+* **ID:** `TASK-007`
+* **Status:** `To Do`
+* **Priority:** Medium
+* **Assignee:** `@Frontend`, `@Backend` (if missing data)
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx`
+* **Description:**
+    เพิ่มคอลัมน์แสดงเวลาแก้ไขล่าสุด (Last Updated) ให้กับตารางการจัดการผู้ใช้เพื่อให้ผู้ดูแลระบบทราบว่าโปรไฟล์ของผู้ใช้คนใดถูกปรับปรุงล่าสุดเมื่อใด
+* **Changes / Suggestions:**
+    - Frontend: เพิ่ม column หัวข้อ `แก้ไขล่าสุด` (Last Updated) ในตารางและรูปแบบเวลาให้เป็น readable format (e.g., `DD MMM YYYY` หรือ `relative time` เช่น `2 days ago`) พร้อม sorting (optional)
+    - Backend: ตรวจสอบ schema/response ของ `GET /api/users` ให้แน่ใจว่ามี `updated_at` หรือฟิลด์ equivalent (เช่น `modified_at`) ส่งมาพร้อมข้อมูล; ถ้าไม่มี ให้เพิ่มการเก็บ/ส่ง `updated_at` ใน response
+    - API performance: ถ้ามีการใช้ pagination, ensure `updated_at` included in paginated response without extra queries
+    - Formatting: ใช้ local timezone and consistent formatting; consider `toLocaleString` or a UI util like `dayjs`/`date-fns` for visual formatting
+* **Files changed (planned):**
+    - `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx`
+    - `frontend/src/components/Table/` (optional)
+    - `backend-api/app/controllers/user_controller.py` / `backend-api/app/models/user_model.py` / `backend-api/app/schemas/user_schema.py` (if `updated_at` not present)
+* **To verify (QA):**
+    1. เปิด `UserManagement` หน้า admin: ตรวจสอบว่า column `แก้ไขล่าสุด` มีอยู่และแสดงเวลาใน format ที่อ่านง่าย
+    2. ทดสอบ sorting ของ column `แก้ไขล่าสุด` (หาก implement sorting): ค่าจะแสดงในลำดับที่ถูกต้อง (ล่าสุดก่อน/หลัง)
+    3. ทดสอบ update flow: เมื่อมีการแก้ไข user profile และบันทึก, `แก้ไขล่าสุด` จะอัปเดตตามข้อมูล backend ที่ส่งมา
+
 ---
 
 ## 2. Active Defects (Bugs)
@@ -347,7 +422,54 @@ docker compose up -d backend-api
     3. If an authentication/cookie issue recurs, validate cookie domain/SameSite and ensure `credentials: 'include'` is used consistently in frontend requests.
     4. Consider adding an incident-level monitor/alert for recurring 500 errors on `/api/history` to detect regressions early.
 
+### ✅ `BUG-012`: [Major] EditUserProfile ไม่สามารถลบรูปโปรไฟล์ได้ (Resolved)
 
+* **ID:** `BUG-012`
+* **Status:** `Resolved`
+* **Severity:** Major
+* **Priority:** Medium
+* **Assignee:** `@Frontend, @Backend`
+* **Resolved By:** `@Kawee`
+* **Resolved At:** 20/11/2025
+* **Files changed:**
+    - `frontend/src/pages/Admin/SuperAdmin/EditUserProfile.jsx` — handleRemoveImage, handleSubmit and preview logic
+    - `backend-api/app/routes/user.py` — PUT: accept `remove_profile_image`, pass UploadFile for controller; added `DELETE /api/users/{user_id}/profile-image`
+    - `backend-api/app/controllers/user_controller.py` — `update_user`, `delete_user_profile_image` behaviors
+    - `backend-api/app/config/cloudinary_config.py` — added `delete_image_from_cloudinary` and improved upload helper
+    - `backend-api/tests/test_user_controller_delete.py`, `backend-api/tests/test_user_controller_update.py` — unit tests for delete and update flows
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/EditUserProfile.jsx`
+* **Steps to Reproduce (STR):**
+    1. Open `EditUserProfile` (e.g., `/admin/super-admin/edit-user/U00002`).
+    2. If a profile image exists, click `Change Profile Image` → `Remove Profile Image`.
+    3. Confirm if prompted and click `Save`.
+    4. Verify UI preview switched to fallback and that `PUT /api/users/:user_id` includes `remove_profile_image=true`.
+
+* **Actual Result (was):**
+    - Previously, users still saw their profile image after save; network requests might not include `remove_profile_image=true`, or the server ignored the flag.
+
+* **Expected Result:**
+    - After removal and save, the profile image should be removed in the UI and DB (`profile_image_url`/`profile_image_public_id` set to NULL). The request must include `remove_profile_image=true` when no new file is attached.
+
+* **Root Cause & Fix Summary:**
+    - The backend didn't robustly handle delete/replace flows and the frontend sometimes sent conflicting parameters.
+    - Implemented a dedicated delete route, updated the controller to delete Cloudinary assets before clearing/updating DB fields, and prevented combined remove+upload in one request.
+
+* **To Verify:**
+    - See verification steps in Resolve section.
+
+### ✅ `BUG-013`: [Minor] Duplicate DOM id `#title` in `EditUserProfile.jsx` (Resolved)
+
+* **ID:** `BUG-013`
+* **Status:** `Resolved`
+* **Severity:** Minor (UI/Accessibility)
+* **Priority:** Low
+* **Assignee:** `@Frontend`
+* **Files changed:** `frontend/src/pages/Admin/SuperAdmin/EditUserProfile.jsx`, `frontend/src/components/common/FormInput.jsx` (id handling)
+* **Summary (was):** Duplicate static `id` attributes for Desktop and Mobile DOM caused accessibility warnings and possibly mis-assigned label associations.
+* **Fix / Resolution:**
+    - Made `FormInput`/`FormSelect` accept `id` props and used unique IDs per layout.
+    - Verified console no longer shows duplicate id warnings.
+    
 ## 4. Document Methodology & References (อ้างอิงแนวทางการเขียนเอกสาร)
 
 เอกสารนี้ถูกร่างขึ้นโดยอ้างอิงแนวทางปฏิบัติ (Best Practices) ที่เป็นมาตรฐานในอุตสาหกรรมซอฟต์แวร์ เพื่อให้ทั้งมนุษย์และ AI Agents สามารถอ่าน, แก้ไข และติดตามผลได้

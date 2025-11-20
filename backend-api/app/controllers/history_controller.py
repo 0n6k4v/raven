@@ -144,7 +144,7 @@ class HistoryController:
                         image_file, 
                         'evidence_history'
                     )
-                    
+                    logger.debug("[history_controller] upload_result: public_id=%s secure_url=%s", upload_result.get('public_id') if isinstance(upload_result, dict) else None, upload_result.get('secure_url') if isinstance(upload_result, dict) else upload_result)
                     photo_url = None
                     if isinstance(upload_result, dict):
                         photo_url = upload_result.get('secure_url') or upload_result.get('url')

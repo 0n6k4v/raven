@@ -11,6 +11,7 @@ const Home = lazy(() => import('./pages/Home'))
 const CreateUser = lazy(() => import('./pages/Admin/SuperAdmin/CreateUser'))
 const UserManagement = lazy(() => import('./pages/Admin/SuperAdmin/UserManagement'))
 const UserProfile = lazy(() => import('./pages/Admin/SuperAdmin/UserProfile'))
+const EditUserProfile = lazy(() => import('./pages/Admin/SuperAdmin/EditUserProfile'))
 const AdminNarcoticCatalog = lazy(() => import('./pages/Admin/NarcoticAdmin/AdminNarcoticCatalog'))
 const CreateNarcotic = lazy(() => import('./pages/Admin/NarcoticAdmin/CreateNarcotic'))
 const Map = lazy(() => import('./pages/Map'))
@@ -47,6 +48,7 @@ const App = memo(function App() {
           <Route path='/createUser' element={<CreateUser />} />
           <Route path='/userManagement' element={<UserManagement />} />
           <Route path='/user-profile/:id' element={<UserProfile />} />
+          <Route path='/edit-user/:id' element={<EditUserProfile />} />
         </Route>
 
         <Route

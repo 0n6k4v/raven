@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict zHNuvWmy8Qp29r9CBTMwmp2gvseQINKXSZgbFxkaHyhwPZmYWb4WBUeOhuYJXDu
+\restrict hvWs4Oh58S5zWAYvOtAoXNbmeYuqgm5UOcFsepHr5Wb4TYpfVSk1FSh9e4jthMw
 
--- Dumped from database version 17.6 (Debian 17.6-2.pgdg12+1)
--- Dumped by pg_dump version 17.6 (Debian 17.6-2.pgdg12+1)
+-- Dumped from database version 17.7 (Debian 17.7-3.pgdg12+1)
+-- Dumped by pg_dump version 17.7 (Debian 17.7-3.pgdg12+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27,7 +27,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
@@ -41,7 +41,7 @@ CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types and functions';
@@ -55,14 +55,14 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
 
 
 --
--- Name: generate_user_code(); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: generate_user_code(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.generate_user_code() RETURNS trigger
@@ -83,10 +83,8 @@ END;
 $$;
 
 
-ALTER FUNCTION public.generate_user_code() OWNER TO postgres;
-
 --
--- Name: generate_user_id(); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: generate_user_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.generate_user_id() RETURNS trigger
@@ -105,14 +103,12 @@ END;
 $$;
 
 
-ALTER FUNCTION public.generate_user_id() OWNER TO postgres;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: ammunitions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: ammunitions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ammunitions (
@@ -123,10 +119,8 @@ CREATE TABLE public.ammunitions (
 );
 
 
-ALTER TABLE public.ammunitions OWNER TO postgres;
-
 --
--- Name: ammunitions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: ammunitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.ammunitions_id_seq
@@ -138,17 +132,15 @@ CREATE SEQUENCE public.ammunitions_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.ammunitions_id_seq OWNER TO postgres;
-
 --
--- Name: ammunitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: ammunitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.ammunitions_id_seq OWNED BY public.ammunitions.id;
 
 
 --
--- Name: cases; Type: TABLE; Schema: public; Owner: postgres
+-- Name: cases; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.cases (
@@ -168,10 +160,8 @@ CREATE TABLE public.cases (
 );
 
 
-ALTER TABLE public.cases OWNER TO postgres;
-
 --
--- Name: cases_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: cases_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.cases_id_seq
@@ -183,17 +173,15 @@ CREATE SEQUENCE public.cases_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.cases_id_seq OWNER TO postgres;
-
 --
--- Name: cases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: cases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.cases_id_seq OWNED BY public.cases.id;
 
 
 --
--- Name: chemical_compounds; Type: TABLE; Schema: public; Owner: postgres
+-- Name: chemical_compounds; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.chemical_compounds (
@@ -203,10 +191,8 @@ CREATE TABLE public.chemical_compounds (
 );
 
 
-ALTER TABLE public.chemical_compounds OWNER TO postgres;
-
 --
--- Name: chemical_compounds_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: chemical_compounds_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.chemical_compounds_id_seq
@@ -218,17 +204,15 @@ CREATE SEQUENCE public.chemical_compounds_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.chemical_compounds_id_seq OWNER TO postgres;
-
 --
--- Name: chemical_compounds_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: chemical_compounds_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.chemical_compounds_id_seq OWNED BY public.chemical_compounds.id;
 
 
 --
--- Name: defendant; Type: TABLE; Schema: public; Owner: postgres
+-- Name: defendant; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.defendant (
@@ -237,10 +221,8 @@ CREATE TABLE public.defendant (
 );
 
 
-ALTER TABLE public.defendant OWNER TO postgres;
-
 --
--- Name: defendant_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: defendant_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.defendant_id_seq
@@ -252,17 +234,15 @@ CREATE SEQUENCE public.defendant_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.defendant_id_seq OWNER TO postgres;
-
 --
--- Name: defendant_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: defendant_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.defendant_id_seq OWNED BY public.defendant.id;
 
 
 --
--- Name: districts; Type: TABLE; Schema: public; Owner: postgres
+-- Name: districts; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.districts (
@@ -275,10 +255,8 @@ CREATE TABLE public.districts (
 );
 
 
-ALTER TABLE public.districts OWNER TO postgres;
-
 --
--- Name: drug_forms; Type: TABLE; Schema: public; Owner: postgres
+-- Name: drug_forms; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.drug_forms (
@@ -287,10 +265,8 @@ CREATE TABLE public.drug_forms (
 );
 
 
-ALTER TABLE public.drug_forms OWNER TO postgres;
-
 --
--- Name: drug_forms_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: drug_forms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.drug_forms_id_seq
@@ -302,17 +278,15 @@ CREATE SEQUENCE public.drug_forms_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.drug_forms_id_seq OWNER TO postgres;
-
 --
--- Name: drug_forms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: drug_forms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.drug_forms_id_seq OWNED BY public.drug_forms.id;
 
 
 --
--- Name: evidence; Type: TABLE; Schema: public; Owner: postgres
+-- Name: evidence; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.evidence (
@@ -334,10 +308,8 @@ CREATE TABLE public.evidence (
 );
 
 
-ALTER TABLE public.evidence OWNER TO postgres;
-
 --
--- Name: evidence_chemical_compounds; Type: TABLE; Schema: public; Owner: postgres
+-- Name: evidence_chemical_compounds; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.evidence_chemical_compounds (
@@ -347,10 +319,8 @@ CREATE TABLE public.evidence_chemical_compounds (
 );
 
 
-ALTER TABLE public.evidence_chemical_compounds OWNER TO postgres;
-
 --
--- Name: evidence_file_mapping; Type: TABLE; Schema: public; Owner: postgres
+-- Name: evidence_file_mapping; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.evidence_file_mapping (
@@ -359,10 +329,8 @@ CREATE TABLE public.evidence_file_mapping (
 );
 
 
-ALTER TABLE public.evidence_file_mapping OWNER TO postgres;
-
 --
--- Name: evidence_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: evidence_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.evidence_id_seq
@@ -374,17 +342,15 @@ CREATE SEQUENCE public.evidence_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.evidence_id_seq OWNER TO postgres;
-
 --
--- Name: evidence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: evidence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.evidence_id_seq OWNED BY public.evidence.id;
 
 
 --
--- Name: evidence_images; Type: TABLE; Schema: public; Owner: postgres
+-- Name: evidence_images; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.evidence_images (
@@ -397,10 +363,8 @@ CREATE TABLE public.evidence_images (
 );
 
 
-ALTER TABLE public.evidence_images OWNER TO postgres;
-
 --
--- Name: evidence_images_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: evidence_images_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.evidence_images_id_seq
@@ -412,17 +376,15 @@ CREATE SEQUENCE public.evidence_images_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.evidence_images_id_seq OWNER TO postgres;
-
 --
--- Name: evidence_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: evidence_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.evidence_images_id_seq OWNED BY public.evidence_images.id;
 
 
 --
--- Name: exhibits; Type: TABLE; Schema: public; Owner: postgres
+-- Name: exhibits; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.exhibits (
@@ -432,10 +394,8 @@ CREATE TABLE public.exhibits (
 );
 
 
-ALTER TABLE public.exhibits OWNER TO postgres;
-
 --
--- Name: exhibits_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: exhibits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.exhibits_id_seq
@@ -447,17 +407,15 @@ CREATE SEQUENCE public.exhibits_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.exhibits_id_seq OWNER TO postgres;
-
 --
--- Name: exhibits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: exhibits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.exhibits_id_seq OWNED BY public.exhibits.id;
 
 
 --
--- Name: file_uploads; Type: TABLE; Schema: public; Owner: postgres
+-- Name: file_uploads; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.file_uploads (
@@ -473,10 +431,8 @@ CREATE TABLE public.file_uploads (
 );
 
 
-ALTER TABLE public.file_uploads OWNER TO postgres;
-
 --
--- Name: file_uploads_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: file_uploads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.file_uploads_id_seq
@@ -488,17 +444,15 @@ CREATE SEQUENCE public.file_uploads_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.file_uploads_id_seq OWNER TO postgres;
-
 --
--- Name: file_uploads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: file_uploads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.file_uploads_id_seq OWNED BY public.file_uploads.id;
 
 
 --
--- Name: firearm_ammunitions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: firearm_ammunitions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.firearm_ammunitions (
@@ -507,10 +461,8 @@ CREATE TABLE public.firearm_ammunitions (
 );
 
 
-ALTER TABLE public.firearm_ammunitions OWNER TO postgres;
-
 --
--- Name: firearms; Type: TABLE; Schema: public; Owner: postgres
+-- Name: firearms; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.firearms (
@@ -524,10 +476,8 @@ CREATE TABLE public.firearms (
 );
 
 
-ALTER TABLE public.firearms OWNER TO postgres;
-
 --
--- Name: firearms_example_images; Type: TABLE; Schema: public; Owner: postgres
+-- Name: firearms_example_images; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.firearms_example_images (
@@ -539,10 +489,8 @@ CREATE TABLE public.firearms_example_images (
 );
 
 
-ALTER TABLE public.firearms_example_images OWNER TO postgres;
-
 --
--- Name: firearms_example_images_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: firearms_example_images_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.firearms_example_images_id_seq
@@ -554,17 +502,15 @@ CREATE SEQUENCE public.firearms_example_images_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.firearms_example_images_id_seq OWNER TO postgres;
-
 --
--- Name: firearms_example_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: firearms_example_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.firearms_example_images_id_seq OWNED BY public.firearms_example_images.id;
 
 
 --
--- Name: firearms_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: firearms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.firearms_id_seq
@@ -576,17 +522,15 @@ CREATE SEQUENCE public.firearms_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.firearms_id_seq OWNER TO postgres;
-
 --
--- Name: firearms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: firearms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.firearms_id_seq OWNED BY public.firearms.id;
 
 
 --
--- Name: history; Type: TABLE; Schema: public; Owner: postgres
+-- Name: history; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.history (
@@ -606,10 +550,8 @@ CREATE TABLE public.history (
 );
 
 
-ALTER TABLE public.history OWNER TO postgres;
-
 --
--- Name: history_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.history_id_seq
@@ -621,17 +563,15 @@ CREATE SEQUENCE public.history_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.history_id_seq OWNER TO postgres;
-
 --
--- Name: history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.history_id_seq OWNED BY public.history.id;
 
 
 --
--- Name: narcotic_example_images; Type: TABLE; Schema: public; Owner: postgres
+-- Name: narcotic_example_images; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.narcotic_example_images (
@@ -644,10 +584,8 @@ CREATE TABLE public.narcotic_example_images (
 );
 
 
-ALTER TABLE public.narcotic_example_images OWNER TO postgres;
-
 --
--- Name: narcotic_example_images_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: narcotic_example_images_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.narcotic_example_images_id_seq
@@ -659,17 +597,15 @@ CREATE SEQUENCE public.narcotic_example_images_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.narcotic_example_images_id_seq OWNER TO postgres;
-
 --
--- Name: narcotic_example_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: narcotic_example_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.narcotic_example_images_id_seq OWNED BY public.narcotic_example_images.id;
 
 
 --
--- Name: narcotics; Type: TABLE; Schema: public; Owner: postgres
+-- Name: narcotics; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.narcotics (
@@ -685,10 +621,8 @@ CREATE TABLE public.narcotics (
 );
 
 
-ALTER TABLE public.narcotics OWNER TO postgres;
-
 --
--- Name: narcotics_chemical_compounds; Type: TABLE; Schema: public; Owner: postgres
+-- Name: narcotics_chemical_compounds; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.narcotics_chemical_compounds (
@@ -698,10 +632,8 @@ CREATE TABLE public.narcotics_chemical_compounds (
 );
 
 
-ALTER TABLE public.narcotics_chemical_compounds OWNER TO postgres;
-
 --
--- Name: narcotics_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: narcotics_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.narcotics_id_seq
@@ -713,17 +645,15 @@ CREATE SEQUENCE public.narcotics_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.narcotics_id_seq OWNER TO postgres;
-
 --
--- Name: narcotics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: narcotics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.narcotics_id_seq OWNED BY public.narcotics.id;
 
 
 --
--- Name: narcotics_image_vectors; Type: TABLE; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.narcotics_image_vectors (
@@ -734,10 +664,8 @@ CREATE TABLE public.narcotics_image_vectors (
 );
 
 
-ALTER TABLE public.narcotics_image_vectors OWNER TO postgres;
-
 --
--- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.narcotics_image_vectors_id_seq
@@ -749,17 +677,15 @@ CREATE SEQUENCE public.narcotics_image_vectors_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.narcotics_image_vectors_id_seq OWNER TO postgres;
-
 --
--- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.narcotics_image_vectors_id_seq OWNED BY public.narcotics_image_vectors.id;
 
 
 --
--- Name: narcotics_pills; Type: TABLE; Schema: public; Owner: postgres
+-- Name: narcotics_pills; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.narcotics_pills (
@@ -771,10 +697,8 @@ CREATE TABLE public.narcotics_pills (
 );
 
 
-ALTER TABLE public.narcotics_pills OWNER TO postgres;
-
 --
--- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
+-- Name: notifications; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.notifications (
@@ -789,10 +713,8 @@ CREATE TABLE public.notifications (
 );
 
 
-ALTER TABLE public.notifications OWNER TO postgres;
-
 --
--- Name: notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.notifications_id_seq
@@ -804,17 +726,15 @@ CREATE SEQUENCE public.notifications_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.notifications_id_seq OWNER TO postgres;
-
 --
--- Name: notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.notifications_id_seq OWNED BY public.notifications.id;
 
 
 --
--- Name: provinces; Type: TABLE; Schema: public; Owner: postgres
+-- Name: provinces; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.provinces (
@@ -828,10 +748,8 @@ CREATE TABLE public.provinces (
 );
 
 
-ALTER TABLE public.provinces OWNER TO postgres;
-
 --
--- Name: role_permissions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.role_permissions (
@@ -842,10 +760,8 @@ CREATE TABLE public.role_permissions (
 );
 
 
-ALTER TABLE public.role_permissions OWNER TO postgres;
-
 --
--- Name: role_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: role_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.role_permissions_id_seq
@@ -857,17 +773,15 @@ CREATE SEQUENCE public.role_permissions_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.role_permissions_id_seq OWNER TO postgres;
-
 --
--- Name: role_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: role_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.role_permissions_id_seq OWNED BY public.role_permissions.id;
 
 
 --
--- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.roles (
@@ -877,10 +791,8 @@ CREATE TABLE public.roles (
 );
 
 
-ALTER TABLE public.roles OWNER TO postgres;
-
 --
--- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.roles_id_seq
@@ -892,17 +804,15 @@ CREATE SEQUENCE public.roles_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
-
 --
--- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
 
 
 --
--- Name: subdistricts; Type: TABLE; Schema: public; Owner: postgres
+-- Name: subdistricts; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.subdistricts (
@@ -915,10 +825,8 @@ CREATE TABLE public.subdistricts (
 );
 
 
-ALTER TABLE public.subdistricts OWNER TO postgres;
-
 --
--- Name: user_permissions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: user_permissions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_permissions (
@@ -931,10 +839,8 @@ CREATE TABLE public.user_permissions (
 );
 
 
-ALTER TABLE public.user_permissions OWNER TO postgres;
-
 --
--- Name: user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.user_permissions_id_seq
@@ -946,17 +852,15 @@ CREATE SEQUENCE public.user_permissions_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.user_permissions_id_seq OWNER TO postgres;
-
 --
--- Name: user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.user_permissions_id_seq OWNED BY public.user_permissions.id;
 
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: postgres
+-- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.users (
@@ -973,14 +877,13 @@ CREATE TABLE public.users (
     is_active boolean DEFAULT true NOT NULL,
     last_login timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    profile_image_public_id character varying(255)
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
-
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.users_id_seq
@@ -992,157 +895,155 @@ CREATE SEQUENCE public.users_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
-
 --
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: ammunitions id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: ammunitions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ammunitions ALTER COLUMN id SET DEFAULT nextval('public.ammunitions_id_seq'::regclass);
 
 
 --
--- Name: cases id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: cases id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cases ALTER COLUMN id SET DEFAULT nextval('public.cases_id_seq'::regclass);
 
 
 --
--- Name: chemical_compounds id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: chemical_compounds id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chemical_compounds ALTER COLUMN id SET DEFAULT nextval('public.chemical_compounds_id_seq'::regclass);
 
 
 --
--- Name: defendant id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: defendant id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.defendant ALTER COLUMN id SET DEFAULT nextval('public.defendant_id_seq'::regclass);
 
 
 --
--- Name: drug_forms id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: drug_forms id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.drug_forms ALTER COLUMN id SET DEFAULT nextval('public.drug_forms_id_seq'::regclass);
 
 
 --
--- Name: evidence id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: evidence id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence ALTER COLUMN id SET DEFAULT nextval('public.evidence_id_seq'::regclass);
 
 
 --
--- Name: evidence_images id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: evidence_images id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_images ALTER COLUMN id SET DEFAULT nextval('public.evidence_images_id_seq'::regclass);
 
 
 --
--- Name: exhibits id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: exhibits id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.exhibits ALTER COLUMN id SET DEFAULT nextval('public.exhibits_id_seq'::regclass);
 
 
 --
--- Name: file_uploads id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: file_uploads id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.file_uploads ALTER COLUMN id SET DEFAULT nextval('public.file_uploads_id_seq'::regclass);
 
 
 --
--- Name: firearms id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: firearms id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms ALTER COLUMN id SET DEFAULT nextval('public.firearms_id_seq'::regclass);
 
 
 --
--- Name: firearms_example_images id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: firearms_example_images id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms_example_images ALTER COLUMN id SET DEFAULT nextval('public.firearms_example_images_id_seq'::regclass);
 
 
 --
--- Name: history id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: history id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history ALTER COLUMN id SET DEFAULT nextval('public.history_id_seq'::regclass);
 
 
 --
--- Name: narcotic_example_images id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: narcotic_example_images id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotic_example_images ALTER COLUMN id SET DEFAULT nextval('public.narcotic_example_images_id_seq'::regclass);
 
 
 --
--- Name: narcotics id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: narcotics id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics ALTER COLUMN id SET DEFAULT nextval('public.narcotics_id_seq'::regclass);
 
 
 --
--- Name: narcotics_image_vectors id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_image_vectors ALTER COLUMN id SET DEFAULT nextval('public.narcotics_image_vectors_id_seq'::regclass);
 
 
 --
--- Name: notifications id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: notifications id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('public.notifications_id_seq'::regclass);
 
 
 --
--- Name: role_permissions id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: role_permissions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.role_permissions ALTER COLUMN id SET DEFAULT nextval('public.role_permissions_id_seq'::regclass);
 
 
 --
--- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
 
 
 --
--- Name: user_permissions id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: user_permissions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_permissions ALTER COLUMN id SET DEFAULT nextval('public.user_permissions_id_seq'::regclass);
 
 
 --
--- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 
 --
--- Data for Name: ammunitions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: ammunitions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ammunitions (id, caliber, type, description) FROM stdin;
@@ -1158,7 +1059,7 @@ COPY public.ammunitions (id, caliber, type, description) FROM stdin;
 
 
 --
--- Data for Name: cases; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: cases; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.cases (id, case_id, seized_from, occurrence_date, occurrence_place, house_number, moo, soi, street, inspection_number, created_at, updated_at, subdistrict) FROM stdin;
@@ -1174,7 +1075,7 @@ COPY public.cases (id, case_id, seized_from, occurrence_date, occurrence_place, 
 
 
 --
--- Data for Name: chemical_compounds; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: chemical_compounds; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.chemical_compounds (id, name, description) FROM stdin;
@@ -1182,7 +1083,7 @@ COPY public.chemical_compounds (id, name, description) FROM stdin;
 
 
 --
--- Data for Name: defendant; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: defendant; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.defendant (id, fullname) FROM stdin;
@@ -1194,7 +1095,7 @@ COPY public.defendant (id, fullname) FROM stdin;
 
 
 --
--- Data for Name: districts; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: districts; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.districts (id, province_id, district_name, perimeter, area_sqkm, geom) FROM stdin;
@@ -2130,7 +2031,7 @@ COPY public.districts (id, province_id, district_name, perimeter, area_sqkm, geo
 
 
 --
--- Data for Name: drug_forms; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: drug_forms; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.drug_forms (id, name) FROM stdin;
@@ -2140,7 +2041,7 @@ COPY public.drug_forms (id, name) FROM stdin;
 
 
 --
--- Data for Name: evidence; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: evidence; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.evidence (id, case_id, sequence_number, quantity, unit, color, diameter_mm, thickness_mm, edge_shape, weight, characteristics, drug_type, defendant_id, created_at, updated_at) FROM stdin;
@@ -2160,7 +2061,7 @@ COPY public.evidence (id, case_id, sequence_number, quantity, unit, color, diame
 
 
 --
--- Data for Name: evidence_chemical_compounds; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: evidence_chemical_compounds; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.evidence_chemical_compounds (evidence_id, chemical_compound_id, percentage) FROM stdin;
@@ -2168,7 +2069,7 @@ COPY public.evidence_chemical_compounds (evidence_id, chemical_compound_id, perc
 
 
 --
--- Data for Name: evidence_file_mapping; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: evidence_file_mapping; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.evidence_file_mapping (file_id, evidence_id) FROM stdin;
@@ -2176,7 +2077,7 @@ COPY public.evidence_file_mapping (file_id, evidence_id) FROM stdin;
 
 
 --
--- Data for Name: evidence_images; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: evidence_images; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.evidence_images (id, evidence_id, image_url, description, priority, image_type) FROM stdin;
@@ -2184,7 +2085,7 @@ COPY public.evidence_images (id, evidence_id, image_url, description, priority, 
 
 
 --
--- Data for Name: exhibits; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: exhibits; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.exhibits (id, category, subcategory) FROM stdin;
@@ -2254,7 +2155,7 @@ COPY public.exhibits (id, category, subcategory) FROM stdin;
 
 
 --
--- Data for Name: file_uploads; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: file_uploads; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.file_uploads (id, file_name, file_type, uploaded_by, upload_date, status, file_url, created_at, updated_at) FROM stdin;
@@ -2262,7 +2163,7 @@ COPY public.file_uploads (id, file_name, file_type, uploaded_by, upload_date, st
 
 
 --
--- Data for Name: firearm_ammunitions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: firearm_ammunitions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.firearm_ammunitions (firearm_id, ammunition_id) FROM stdin;
@@ -2275,7 +2176,7 @@ COPY public.firearm_ammunitions (firearm_id, ammunition_id) FROM stdin;
 
 
 --
--- Data for Name: firearms; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: firearms; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.firearms (id, exhibit_id, mechanism, brand, series, model, normalized_name) FROM stdin;
@@ -2304,7 +2205,7 @@ COPY public.firearms (id, exhibit_id, mechanism, brand, series, model, normalize
 
 
 --
--- Data for Name: firearms_example_images; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: firearms_example_images; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.firearms_example_images (id, firearm_id, image_url, description, priority) FROM stdin;
@@ -2334,7 +2235,7 @@ COPY public.firearms_example_images (id, firearm_id, image_url, description, pri
 
 
 --
--- Data for Name: history; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: history; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.history (id, exhibit_id, subdistrict_id, discovery_date, discovery_time, discovered_by, photo_url, created_at, modified_at, modified_by, quantity, location, ai_confidence) FROM stdin;
@@ -2360,11 +2261,16 @@ COPY public.history (id, exhibit_id, subdistrict_id, discovery_date, discovery_t
 57	38	103201	2025-06-05	22:34:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1749137772/firearm_examples/ytf4jousv17memckg7rc.png	2025-06-05 15:36:10.928343	2025-06-05 15:36:10.928343	\N	\N	0101000020E610000013C32C1B0F2D5940B890753176732B40	1.00
 59	5	104401	2025-06-06	06:44:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1749253484/firearm_examples/ol2qm3gauayhhzpvkfob.webp	2025-06-06 23:44:41.313093	2025-06-06 23:44:41.313093	\N	\N	0101000020E610000087AAF303B22C5940F76173C410872B40	0.79
 60	77	104401	2025-06-07	11:21:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1749270134/firearm_examples/xq15m18wxpcqx40yoxr4.png	2025-06-07 04:22:09.850035	2025-06-07 04:22:09.850035	\N	\N	0101000020E610000028A2BA14B22C5940D443D90011872B40	1.00
+66	3	130201	2025-11-19	21:47:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763563653/evidence_history/k2vwwwtw2z276ucaeimf.jpg	2025-11-19 14:47:27.841995	2025-11-19 14:47:27.841995	\N	\N	0101000020E61000008B1E53D21E2659400820B58993272C40	1.00
+67	3	130201	2025-11-19	23:20:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763569251/evidence_history/easzfhtjl3s61t5z3ojq.jpg	2025-11-19 16:20:46.200168	2025-11-19 16:20:46.200168	\N	\N	0101000020E6100000F6CE0DF21F2659406296879686272C40	1.00
+68	3	130201	2025-11-19	23:29:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763569872/evidence_history/efmi37b5mgbdeblekl4d.jpg	2025-11-19 16:31:10.184142	2025-11-19 16:31:10.184142	\N	\N	0101000020E610000001000000572659407C82126C11262C40	1.00
+69	3	130201	2025-11-19	23:48:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763570911/evidence_history/n7zhkn2dvdyiavenfh7x.jpg	2025-11-19 16:48:28.849805	2025-11-19 16:48:28.849805	\N	\N	0101000020E61000006C1679A3A02559406D3D9EF1D82A2C40	1.00
+70	3	130201	2025-11-19	00:02:00	U00001	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763571735/evidence_history/atqcilzlzjz7b4ayypbb.jpg	2025-11-19 17:02:13.566971	2025-11-19 17:02:13.566971	\N	\N	0101000020E61000006C1679A3A02559406D3D9EF1D82A2C40	1.00
 \.
 
 
 --
--- Data for Name: narcotic_example_images; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: narcotic_example_images; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.narcotic_example_images (id, narcotic_id, image_url, description, priority, image_type) FROM stdin;
@@ -2385,7 +2291,7 @@ COPY public.narcotic_example_images (id, narcotic_id, image_url, description, pr
 
 
 --
--- Data for Name: narcotics; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: narcotics; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.narcotics (id, exhibit_id, form_id, characteristics, drug_type, drug_category, consumption_method, effect, weight_grams) FROM stdin;
@@ -2406,7 +2312,7 @@ COPY public.narcotics (id, exhibit_id, form_id, characteristics, drug_type, drug
 
 
 --
--- Data for Name: narcotics_chemical_compounds; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: narcotics_chemical_compounds; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.narcotics_chemical_compounds (narcotic_id, chemical_compound_id, percentage) FROM stdin;
@@ -2414,7 +2320,7 @@ COPY public.narcotics_chemical_compounds (narcotic_id, chemical_compound_id, per
 
 
 --
--- Data for Name: narcotics_image_vectors; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: narcotics_image_vectors; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.narcotics_image_vectors (id, narcotic_id, image_id, image_vector) FROM stdin;
@@ -2427,7 +2333,7 @@ COPY public.narcotics_image_vectors (id, narcotic_id, image_id, image_vector) FR
 
 
 --
--- Data for Name: narcotics_pills; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: narcotics_pills; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.narcotics_pills (narcotic_id, color, diameter_mm, thickness_mm, edge_shape) FROM stdin;
@@ -2448,7 +2354,7 @@ COPY public.narcotics_pills (narcotic_id, color, diameter_mm, thickness_mm, edge
 
 
 --
--- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.notifications (id, user_id, receiver_id, type, message, is_read, created_at, updated_at) FROM stdin;
@@ -2456,7 +2362,7 @@ COPY public.notifications (id, user_id, receiver_id, type, message, is_read, cre
 
 
 --
--- Data for Name: provinces; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: provinces; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.provinces (id, province_name, reg_nesdb, reg_royin, perimeter, area_sqkm, geom) FROM stdin;
@@ -2541,7 +2447,7 @@ COPY public.provinces (id, province_name, reg_nesdb, reg_royin, perimeter, area_
 
 
 --
--- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.role_permissions (id, role_id, permission_type, granted) FROM stdin;
@@ -2550,7 +2456,7 @@ COPY public.role_permissions (id, role_id, permission_type, granted) FROM stdin;
 
 
 --
--- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.roles (id, role_name, description) FROM stdin;
@@ -2561,7 +2467,7 @@ COPY public.roles (id, role_name, description) FROM stdin;
 
 
 --
--- Data for Name: spatial_ref_sys; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: spatial_ref_sys; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) FROM stdin;
@@ -2569,7 +2475,7 @@ COPY public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) FROM
 
 
 --
--- Data for Name: subdistricts; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: subdistricts; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.subdistricts (id, district_id, subdistrict_name, perimeter, area_sqkm, geom) FROM stdin;
@@ -9944,7 +9850,7 @@ COPY public.subdistricts (id, district_id, subdistrict_name, perimeter, area_sqk
 
 
 --
--- Data for Name: user_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: user_permissions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_permissions (id, user_id, permission_type, granted, created_at, updated_at) FROM stdin;
@@ -9952,161 +9858,161 @@ COPY public.user_permissions (id, user_id, permission_type, granted, created_at,
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.users (id, user_id, title, firstname, lastname, email, password, profile_image_url, role_id, department, is_active, last_login, created_at, updated_at) FROM stdin;
-1	U00001	นาย	ผู้ใช้งาน	ทั่วไป	user@example.com	$argon2id$v=19$m=65536,t=3,p=4$2RYV9Z/HeFu4Vn611OmuiA$jxybpQMDX18V0V2ELU207sotrLInTwAnfxoaaq5Jp3w	\N	3	IT Department	t	2025-05-01 15:17:23.990023	2025-04-29 06:49:09.091073	2025-11-11 08:42:15.494406
-3	U00002	นาย	ผู้ดูแลระบบ	สูงสุด	superadmin@example.com	$argon2id$v=19$m=65536,t=3,p=4$vACo+zP0BP+eTISurf2hXw$/F2O+Du2+evSar4EXyjLuU8HewtLgnr2xAk8E45ccik	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746328821/firearm_examples/bemqhrk38rvablfv32z1.jpg	1	ผู้ดูแลระบบ	t	2025-04-30 16:29:44.508879	2025-04-30 07:48:05.276152	2025-11-11 08:42:25.397225
-5	U00004	นาย	แอดมิน	กลุ่มงานปืน	admingun@example.com	$argon2id$v=19$m=65536,t=3,p=4$EpcEsmUENYCpQDkC84GKBA$SqvenRPdmGsaibg7N8rgYgtSVnUEIQNsxjSCmQrhT7k	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746345353/firearm_examples/hp9yyurdpprkdqoj3dfw.jpg	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-04 07:55:51.385765	2025-11-11 08:42:31.925848
-6	U00006	นางสาว	แอดมิน	กลุ่มงานยา	adminnarcotic@example.com	$argon2id$v=19$m=65536,t=3,p=4$FLkWM6WuNJ3QeKDnQUjIIA$0V4bSkc/NtW9Z20N58kHG7csT6XCc9EnETQE7Twp6JY	\N	2	กลุ่มงานยาเสพติด	t	\N	2025-05-04 13:45:04.52454	2025-11-11 08:42:38.698957
-7	U00007	นางสาว	ผู้ใช้งาน	สอง	user2@example.com	$argon2id$v=19$m=65536,t=3,p=4$Jz+Fu3oZWWJlzJkRrGjZQg$DsUjO/Cz+cJJO6v5zdX5a+ke8a4tHxJwLh2e83PSzPw	\N	3	เจ้าหน้าที่หน้างาน	t	\N	2025-05-08 13:44:04.717637	2025-11-11 08:42:44.532992
-8	U00008	นาย	แอดมิน	แอดมิน	sup@example.com	$argon2id$v=19$m=65536,t=3,p=4$rZvY8aTfh0YPTpX32fvaxw$kH+299RzLSiyaNSbF/T+ut+t4j6S4mzk4Ws5QZrxFBA	\N	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-21 10:58:51.10185	2025-11-11 08:42:50.03201
+COPY public.users (id, user_id, title, firstname, lastname, email, password, profile_image_url, role_id, department, is_active, last_login, created_at, updated_at, profile_image_public_id) FROM stdin;
+1	U00001	นาย	ผู้ใช้งาน	ทั่วไป	user@example.com	$argon2id$v=19$m=65536,t=3,p=4$2RYV9Z/HeFu4Vn611OmuiA$jxybpQMDX18V0V2ELU207sotrLInTwAnfxoaaq5Jp3w	\N	3	IT Department	t	2025-05-01 15:17:23.990023	2025-04-29 06:49:09.091073	2025-11-11 08:42:15.494406	\N
+6	U00006	นางสาว	แอดมิน	กลุ่มงานยา	adminnarcotic@example.com	$argon2id$v=19$m=65536,t=3,p=4$FLkWM6WuNJ3QeKDnQUjIIA$0V4bSkc/NtW9Z20N58kHG7csT6XCc9EnETQE7Twp6JY	\N	2	กลุ่มงานยาเสพติด	t	\N	2025-05-04 13:45:04.52454	2025-11-11 08:42:38.698957	\N
+7	U00007	นางสาว	ผู้ใช้งาน	สอง	user2@example.com	$argon2id$v=19$m=65536,t=3,p=4$Jz+Fu3oZWWJlzJkRrGjZQg$DsUjO/Cz+cJJO6v5zdX5a+ke8a4tHxJwLh2e83PSzPw	\N	3	เจ้าหน้าที่หน้างาน	t	\N	2025-05-08 13:44:04.717637	2025-11-11 08:42:44.532992	\N
+8	U00008	นาย	แอดมิน	แอดมิน	sup@example.com	$argon2id$v=19$m=65536,t=3,p=4$rZvY8aTfh0YPTpX32fvaxw$kH+299RzLSiyaNSbF/T+ut+t4j6S4mzk4Ws5QZrxFBA	\N	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-21 10:58:51.10185	2025-11-20 04:14:18.680778	\N
+5	U00004	นาย	แอดมิน	กลุ่มงานปืน	admingun@example.com	$argon2id$v=19$m=65536,t=3,p=4$EpcEsmUENYCpQDkC84GKBA$SqvenRPdmGsaibg7N8rgYgtSVnUEIQNsxjSCmQrhT7k	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1746345353/firearm_examples/hp9yyurdpprkdqoj3dfw.jpg	2	กลุ่มงานอาวุธปืน	t	\N	2025-05-04 07:55:51.385765	2025-11-11 08:42:31.925848	firearm_examples/hp9yyurdpprkdqoj3dfw.jpg
+3	U00002	นาย	ผู้ดูแลระบบ	สูงสุด	superadmin@example.com	$argon2id$v=19$m=65536,t=3,p=4$vACo+zP0BP+eTISurf2hXw$/F2O+Du2+evSar4EXyjLuU8HewtLgnr2xAk8E45ccik	https://res.cloudinary.com/ddzwlyj5y/image/upload/v1763612094/user_profiles/iuvtztoc3dmhoauhoizw.png	1	ผู้ดูแลระบบ	t	2025-04-30 16:29:44.508879	2025-04-30 07:48:05.276152	2025-11-20 04:14:52.914766	user_profiles/iuvtztoc3dmhoauhoizw.png
 \.
 
 
 --
--- Name: ammunitions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: ammunitions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.ammunitions_id_seq', 8, true);
 
 
 --
--- Name: cases_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: cases_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.cases_id_seq', 8, true);
 
 
 --
--- Name: chemical_compounds_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: chemical_compounds_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.chemical_compounds_id_seq', 1, false);
 
 
 --
--- Name: defendant_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: defendant_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.defendant_id_seq', 4, true);
 
 
 --
--- Name: drug_forms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: drug_forms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.drug_forms_id_seq', 4, true);
 
 
 --
--- Name: evidence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: evidence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.evidence_id_seq', 12, true);
 
 
 --
--- Name: evidence_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: evidence_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.evidence_images_id_seq', 1, false);
 
 
 --
--- Name: exhibits_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: exhibits_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.exhibits_id_seq', 94, true);
 
 
 --
--- Name: file_uploads_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: file_uploads_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.file_uploads_id_seq', 1, false);
 
 
 --
--- Name: firearms_example_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: firearms_example_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.firearms_example_images_id_seq', 44, true);
 
 
 --
--- Name: firearms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: firearms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.firearms_id_seq', 51, true);
 
 
 --
--- Name: history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.history_id_seq', 60, true);
+SELECT pg_catalog.setval('public.history_id_seq', 70, true);
 
 
 --
--- Name: narcotic_example_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: narcotic_example_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.narcotic_example_images_id_seq', 13, true);
 
 
 --
--- Name: narcotics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: narcotics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.narcotics_id_seq', 39, true);
 
 
 --
--- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.narcotics_image_vectors_id_seq', 5, true);
 
 
 --
--- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.notifications_id_seq', 1, false);
 
 
 --
--- Name: role_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: role_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.role_permissions_id_seq', 1, true);
 
 
 --
--- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.roles_id_seq', 3, true);
 
 
 --
--- Name: user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.user_permissions_id_seq', 1, false);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 9, true);
 
 
 --
--- Name: ammunitions ammunitions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: ammunitions ammunitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ammunitions
@@ -10114,7 +10020,7 @@ ALTER TABLE ONLY public.ammunitions
 
 
 --
--- Name: cases cases_case_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: cases cases_case_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cases
@@ -10122,7 +10028,7 @@ ALTER TABLE ONLY public.cases
 
 
 --
--- Name: cases cases_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: cases cases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cases
@@ -10130,7 +10036,7 @@ ALTER TABLE ONLY public.cases
 
 
 --
--- Name: chemical_compounds chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chemical_compounds chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chemical_compounds
@@ -10138,7 +10044,7 @@ ALTER TABLE ONLY public.chemical_compounds
 
 
 --
--- Name: defendant defendant_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: defendant defendant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.defendant
@@ -10146,7 +10052,7 @@ ALTER TABLE ONLY public.defendant
 
 
 --
--- Name: districts districts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: districts districts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.districts
@@ -10154,7 +10060,7 @@ ALTER TABLE ONLY public.districts
 
 
 --
--- Name: drug_forms drug_forms_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: drug_forms drug_forms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.drug_forms
@@ -10162,7 +10068,7 @@ ALTER TABLE ONLY public.drug_forms
 
 
 --
--- Name: evidence_chemical_compounds evidence_chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_chemical_compounds evidence_chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_chemical_compounds
@@ -10170,7 +10076,7 @@ ALTER TABLE ONLY public.evidence_chemical_compounds
 
 
 --
--- Name: evidence_file_mapping evidence_file_mapping_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_file_mapping evidence_file_mapping_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_file_mapping
@@ -10178,7 +10084,7 @@ ALTER TABLE ONLY public.evidence_file_mapping
 
 
 --
--- Name: evidence_images evidence_images_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_images evidence_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_images
@@ -10186,7 +10092,7 @@ ALTER TABLE ONLY public.evidence_images
 
 
 --
--- Name: evidence evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence
@@ -10194,7 +10100,7 @@ ALTER TABLE ONLY public.evidence
 
 
 --
--- Name: exhibits exhibits_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: exhibits exhibits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.exhibits
@@ -10202,7 +10108,7 @@ ALTER TABLE ONLY public.exhibits
 
 
 --
--- Name: file_uploads file_uploads_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: file_uploads file_uploads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.file_uploads
@@ -10210,7 +10116,7 @@ ALTER TABLE ONLY public.file_uploads
 
 
 --
--- Name: firearm_ammunitions firearm_ammunitions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearm_ammunitions firearm_ammunitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearm_ammunitions
@@ -10218,7 +10124,7 @@ ALTER TABLE ONLY public.firearm_ammunitions
 
 
 --
--- Name: firearms_example_images firearms_example_images_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearms_example_images firearms_example_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms_example_images
@@ -10226,7 +10132,7 @@ ALTER TABLE ONLY public.firearms_example_images
 
 
 --
--- Name: firearms firearms_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearms firearms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms
@@ -10234,7 +10140,7 @@ ALTER TABLE ONLY public.firearms
 
 
 --
--- Name: history history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: history history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history
@@ -10242,7 +10148,7 @@ ALTER TABLE ONLY public.history
 
 
 --
--- Name: narcotic_example_images narcotic_example_images_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotic_example_images narcotic_example_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotic_example_images
@@ -10250,7 +10156,7 @@ ALTER TABLE ONLY public.narcotic_example_images
 
 
 --
--- Name: narcotics_chemical_compounds narcotics_chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_chemical_compounds narcotics_chemical_compounds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_chemical_compounds
@@ -10258,7 +10164,7 @@ ALTER TABLE ONLY public.narcotics_chemical_compounds
 
 
 --
--- Name: narcotics_image_vectors narcotics_image_vectors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors narcotics_image_vectors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_image_vectors
@@ -10266,7 +10172,7 @@ ALTER TABLE ONLY public.narcotics_image_vectors
 
 
 --
--- Name: narcotics narcotics_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics narcotics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics
@@ -10274,7 +10180,7 @@ ALTER TABLE ONLY public.narcotics
 
 
 --
--- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.notifications
@@ -10282,7 +10188,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: narcotics_pills pk_narcotics_pills; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_pills pk_narcotics_pills; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_pills
@@ -10290,7 +10196,7 @@ ALTER TABLE ONLY public.narcotics_pills
 
 
 --
--- Name: provinces provinces_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: provinces provinces_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.provinces
@@ -10298,7 +10204,7 @@ ALTER TABLE ONLY public.provinces
 
 
 --
--- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -10306,7 +10212,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.roles
@@ -10314,7 +10220,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: roles roles_role_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_role_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.roles
@@ -10322,7 +10228,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: subdistricts subdistricts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subdistricts subdistricts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.subdistricts
@@ -10330,7 +10236,7 @@ ALTER TABLE ONLY public.subdistricts
 
 
 --
--- Name: user_permissions user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: user_permissions user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_permissions
@@ -10338,7 +10244,7 @@ ALTER TABLE ONLY public.user_permissions
 
 
 --
--- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -10346,7 +10252,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -10354,7 +10260,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -10362,21 +10268,21 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: idx_cases_subdistrict; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_cases_subdistrict; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_cases_subdistrict ON public.cases USING btree (subdistrict);
 
 
 --
--- Name: users set_user_id; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: users set_user_id; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER set_user_id BEFORE INSERT ON public.users FOR EACH ROW WHEN ((new.user_id IS NULL)) EXECUTE FUNCTION public.generate_user_id();
 
 
 --
--- Name: districts districts_province_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: districts districts_province_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.districts
@@ -10384,7 +10290,7 @@ ALTER TABLE ONLY public.districts
 
 
 --
--- Name: evidence evidence_case_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence evidence_case_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence
@@ -10392,7 +10298,7 @@ ALTER TABLE ONLY public.evidence
 
 
 --
--- Name: evidence_chemical_compounds evidence_chemical_compounds_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_chemical_compounds evidence_chemical_compounds_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_chemical_compounds
@@ -10400,7 +10306,7 @@ ALTER TABLE ONLY public.evidence_chemical_compounds
 
 
 --
--- Name: evidence evidence_defendant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence evidence_defendant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence
@@ -10408,7 +10314,7 @@ ALTER TABLE ONLY public.evidence
 
 
 --
--- Name: evidence_file_mapping evidence_file_mapping_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_file_mapping evidence_file_mapping_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_file_mapping
@@ -10416,7 +10322,7 @@ ALTER TABLE ONLY public.evidence_file_mapping
 
 
 --
--- Name: evidence_file_mapping evidence_file_mapping_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_file_mapping evidence_file_mapping_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_file_mapping
@@ -10424,7 +10330,7 @@ ALTER TABLE ONLY public.evidence_file_mapping
 
 
 --
--- Name: evidence_images evidence_images_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: evidence_images evidence_images_evidence_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_images
@@ -10432,7 +10338,7 @@ ALTER TABLE ONLY public.evidence_images
 
 
 --
--- Name: file_uploads file_uploads_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: file_uploads file_uploads_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.file_uploads
@@ -10440,7 +10346,7 @@ ALTER TABLE ONLY public.file_uploads
 
 
 --
--- Name: firearm_ammunitions firearm_ammunitions_ammunition_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearm_ammunitions firearm_ammunitions_ammunition_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearm_ammunitions
@@ -10448,7 +10354,7 @@ ALTER TABLE ONLY public.firearm_ammunitions
 
 
 --
--- Name: firearm_ammunitions firearm_ammunitions_firearm_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearm_ammunitions firearm_ammunitions_firearm_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearm_ammunitions
@@ -10456,7 +10362,7 @@ ALTER TABLE ONLY public.firearm_ammunitions
 
 
 --
--- Name: firearms_example_images firearms_example_images_firearm_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearms_example_images firearms_example_images_firearm_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms_example_images
@@ -10464,7 +10370,7 @@ ALTER TABLE ONLY public.firearms_example_images
 
 
 --
--- Name: firearms firearms_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: firearms firearms_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.firearms
@@ -10472,7 +10378,7 @@ ALTER TABLE ONLY public.firearms
 
 
 --
--- Name: cases fk_cases_subdistrict; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: cases fk_cases_subdistrict; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cases
@@ -10480,7 +10386,7 @@ ALTER TABLE ONLY public.cases
 
 
 --
--- Name: notifications fk_notifications_receiver; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications fk_notifications_receiver; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.notifications
@@ -10488,7 +10394,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: notifications fk_notifications_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications fk_notifications_user; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.notifications
@@ -10496,7 +10402,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: history history_discovered_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: history history_discovered_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history
@@ -10504,7 +10410,7 @@ ALTER TABLE ONLY public.history
 
 
 --
--- Name: history history_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: history history_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history
@@ -10512,7 +10418,7 @@ ALTER TABLE ONLY public.history
 
 
 --
--- Name: history history_modified_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: history history_modified_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history
@@ -10520,7 +10426,7 @@ ALTER TABLE ONLY public.history
 
 
 --
--- Name: history history_subdistrict_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: history history_subdistrict_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.history
@@ -10528,7 +10434,7 @@ ALTER TABLE ONLY public.history
 
 
 --
--- Name: narcotic_example_images narcotic_example_images_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotic_example_images narcotic_example_images_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotic_example_images
@@ -10536,7 +10442,7 @@ ALTER TABLE ONLY public.narcotic_example_images
 
 
 --
--- Name: narcotics_chemical_compounds narcotics_chemical_compounds_chemical_compound_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_chemical_compounds narcotics_chemical_compounds_chemical_compound_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_chemical_compounds
@@ -10544,7 +10450,7 @@ ALTER TABLE ONLY public.narcotics_chemical_compounds
 
 
 --
--- Name: narcotics_chemical_compounds narcotics_chemical_compounds_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_chemical_compounds narcotics_chemical_compounds_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_chemical_compounds
@@ -10552,7 +10458,7 @@ ALTER TABLE ONLY public.narcotics_chemical_compounds
 
 
 --
--- Name: narcotics narcotics_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics narcotics_exhibit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics
@@ -10560,7 +10466,7 @@ ALTER TABLE ONLY public.narcotics
 
 
 --
--- Name: narcotics_image_vectors narcotics_image_vectors_image_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors narcotics_image_vectors_image_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_image_vectors
@@ -10568,7 +10474,7 @@ ALTER TABLE ONLY public.narcotics_image_vectors
 
 
 --
--- Name: narcotics_image_vectors narcotics_image_vectors_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_image_vectors narcotics_image_vectors_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_image_vectors
@@ -10576,7 +10482,7 @@ ALTER TABLE ONLY public.narcotics_image_vectors
 
 
 --
--- Name: narcotics_pills narcotics_pills_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: narcotics_pills narcotics_pills_narcotic_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.narcotics_pills
@@ -10584,7 +10490,7 @@ ALTER TABLE ONLY public.narcotics_pills
 
 
 --
--- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -10592,7 +10498,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: subdistricts subdistricts_district_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subdistricts subdistricts_district_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.subdistricts
@@ -10600,7 +10506,7 @@ ALTER TABLE ONLY public.subdistricts
 
 
 --
--- Name: user_permissions user_permissions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: user_permissions user_permissions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_permissions
@@ -10608,7 +10514,7 @@ ALTER TABLE ONLY public.user_permissions
 
 
 --
--- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -10619,5 +10525,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zHNuvWmy8Qp29r9CBTMwmp2gvseQINKXSZgbFxkaHyhwPZmYWb4WBUeOhuYJXDu
+\unrestrict hvWs4Oh58S5zWAYvOtAoXNbmeYuqgm5UOcFsepHr5Wb4TYpfVSk1FSh9e4jthMw
 

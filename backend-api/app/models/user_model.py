@@ -20,6 +20,7 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
     profile_image_url = Column(String(255))
+    profile_image_public_id = Column(String(255))
 
     #Relationships
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False, index=True)
