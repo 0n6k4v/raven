@@ -563,7 +563,7 @@ const CreateUser = () => {
       setSuccess('สร้างผู้ใช้สำเร็จ');
       reset();
       handleRemoveImage();
-      setTimeout(() => navigate('/userManagementTable'), 1200);
+      setTimeout(() => navigate('/userManagement'), 1200);
     } catch (err) {
       setError(err?.message || 'เกิดข้อผิดพลาด');
     } finally {

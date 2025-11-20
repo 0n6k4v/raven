@@ -7,6 +7,7 @@ import Pagination from '../../../components/common/Pagination';
 /* CONSTANTS */
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 const initialFilters = { role: [], department: [] };
+
 const roleOptions = [
   { value: 'admin', label: 'แอดมิน' },
   { value: 'user', label: 'ผู้ใช้ทั่วไป' },
@@ -14,6 +15,7 @@ const roleOptions = [
   { value: 'officer', label: 'เจ้าหน้าที่' },
   { value: 'supervisor', label: 'ผู้ดูแล' },
 ];
+
 const departmentOptions = [
   { value: 'สืบสวน', label: 'สืบสวน' },
   { value: 'ปราบปราม', label: 'ปราบปราม' },
@@ -22,6 +24,7 @@ const departmentOptions = [
   { value: 'บริหาร', label: 'บริหาร' },
   { value: 'อำนวยการ', label: 'อำนวยการ' },
 ];
+
 const roleMapping = {
   'admin': 'แอดมิน',
   'user': 'ผู้ใช้ทั่วไป',
@@ -173,24 +176,18 @@ function useUserManagement() {
     const id = getUserId(user);
     setPopup(prev => ({ ...prev, open: false }));
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setPopupCountdown(5);
-        setPopup({ open: true, type: 'fail', message: 'กรุณาเข้าสู่ระบบเพื่อทำรายการนี้', user: null });
-        return;
-      }
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include',
       });
       if (res.ok) {
         setUsers(prev => prev.filter(u => getUserId(u) !== id));
         setFilteredUsers(prev => prev.filter(u => getUserId(u) !== id));
         setPopupCountdown(5);
         setPopup({ open: true, type: 'success', message: 'ลบผู้ใช้สำเร็จ', user: null });
+      } else if (res.status === 401 || res.status === 403) {
+        setPopupCountdown(5);
+        setPopup({ open: true, type: 'fail', message: 'กรุณาเข้าสู่ระบบเพื่อทำรายการนี้', user: null });
       } else {
         const errorData = await res.json().catch(() => ({}));
         setPopupCountdown(5);
@@ -329,8 +326,8 @@ const FilterPopup = memo(function FilterPopup({
   }, [filters, onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4" role="dialog" aria-modal="true" aria-label="ตัวกรองผู้ใช้งาน">
-      <div className="bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg border border-gray-200 md:border-gray-300 md:shadow-none flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true" aria-label="ตัวกรองผู้ใช้งาน">
+      <div className="relative z-60 bg-white w-full h-full md:w-full md:h-[70vh] md:max-w-[650px] md:max-h-[90vh] md:rounded-lg border border-gray-200 md:border-gray-300 shadow-lg flex flex-col overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
           <h2 className="text-xl md:text-2xl font-semibold">เลือกตัวกรองผลลัพธ์</h2>
           <button onClick={handleClose} className="text-gray-500 hover:text-gray-700" aria-label="ปิดตัวกรอง">
@@ -412,6 +409,7 @@ const FilterPopup = memo(function FilterPopup({
           </button>
         </div>
       </div>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
     </div>
   );
 });
@@ -428,8 +426,8 @@ const Popup = memo(function Popup({
   if (!open) return null;
   let icon, color;
   if (type === 'confirm') {
-    icon = <FiTrash size={32} className="text-red-600 mb-2" />;
-    color = 'text-red-600';
+    icon = <FiTrash size={32} className="text-[#990000] mb-2" />;
+    color = 'text-[#990000]';
   } else if (type === 'success') {
     icon = <svg className="w-8 h-8 text-green-600 mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
     color = 'text-green-600';
@@ -438,8 +436,9 @@ const Popup = memo(function Popup({
     color = 'text-red-600';
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" role="dialog" aria-modal="true" aria-label="แจ้งเตือน">
-      <div className="bg-white rounded-lg border border-gray-200 md:border-gray-300 md:shadow-none flex flex-col items-center justify-center w-80 h-64 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="แจ้งเตือน">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div className="relative z-60 bg-white rounded-lg border border-gray-200 md:border-gray-300 shadow-lg flex flex-col items-center justify-center w-80 h-64">
          {(type === 'success' || type === 'fail') && (
            <button
              onClick={onClose}
@@ -453,8 +452,8 @@ const Popup = memo(function Popup({
         <div className={`font-semibold text-lg mb-4 mt-2 text-center ${color}`}>{message}</div>
         {type === 'confirm' && (
           <div className="flex gap-4 mt-2">
-            <button onClick={onCancel} className="px-4 py-2 rounded border" aria-label="ยกเลิก">ยกเลิก</button>
-            <button onClick={onConfirm} className="px-4 py-2 rounded bg-red-600 text-white" aria-label="ยืนยันลบ">ยืนยัน</button>
+            <button onClick={onCancel} className="px-4 py-2 rounded border border-gray-400 text-gray-700 hover:bg-gray-100" aria-label="ยกเลิก">ยกเลิก</button>
+            <button onClick={onConfirm} className="px-4 py-2 rounded bg-[#990000] hover:bg-[#b30000] text-white focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#7a0000]" aria-label="ยืนยันลบ">ยืนยัน</button>
           </div>
         )}
         {(type === 'success' || type === 'fail') && (

@@ -3,20 +3,66 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import User, PaginatedUserResponse, UserResponse
 from app.controllers.auth_controller import get_current_active_user_from_cookie
-from app.controllers.user_controller import get_all_users, get_user_by_user_id, update_user, delete_user_profile_image
+from app.controllers.user_controller import create_user,get_all_users, get_user_by_user_id, update_user, delete_user_profile_image, delete_user
 from app.config.db_config import get_async_db
 from app.config.cloudinary_config import upload_image_to_cloudinary
 import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 async def get_user(
     access_token: str = Cookie(None),
     db: AsyncSession = Depends(get_async_db)
 ):
     return await get_current_active_user_from_cookie(access_token, db)
+
+# CREATE
+
+@router.post("/users/create", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_new_user(
+    title: str = Form(...),
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    department: Optional[str] = Form(None),
+    role_id: int = Form(...),
+    profile_image: Optional[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_async_db)
+):
+    profile_image_url = None
+    profile_image_public_id = None
+    if profile_image:
+        try:
+            result = await upload_image_to_cloudinary(profile_image, folder="user_profiles")
+            profile_image_url = result.get('secure_url')
+            profile_image_public_id = result.get('public_id')
+            logger.debug("[routes.user] profile image upload returned public_id=%s", profile_image_public_id)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to upload profile image: {str(e)}"
+            )
+
+    user_data = {
+        "title": title,
+        "firstname": firstname,
+        "lastname": lastname,
+        "email": email,
+        "password": password,
+        "department": department,
+        "role_id": role_id,
+        "profile_image_url": profile_image_url
+        , "profile_image_public_id": profile_image_public_id
+    }
+
+    db_user = await create_user(db=db, user_data=user_data)
+    logger.info("Created new user %s with profile_image_public_id=%s", db_user.user_id, getattr(db_user, 'profile_image_public_id', None))
+    return db_user
+
+# READ
 
 @router.get("/me", response_model=User)
 async def read_users_me(user: User = Depends(get_user)):
@@ -50,6 +96,8 @@ async def list_users(
 async def get_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
     return await get_user_by_user_id(db, user_id=user_id)
 
+# UPDATE
+
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user_info(
     user_id: str,
@@ -69,17 +117,14 @@ async def update_user_info(
     
     profile_image_url = user.profile_image_url
     profile_image_public_id = getattr(user, 'profile_image_public_id', None)
-    # remove_profile_image flag: mark it to be processed in the controller
     if remove_profile_image == 'true' and profile_image:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot remove and upload in the same request; please remove or upload only.")
 
     remove_profile_image_flag = False
     if remove_profile_image == 'true':
-        # Mark removal in the user_data for controller handling on save
         remove_profile_image_flag = True
 
     if profile_image:
-        # The actual upload is handled by controller for delete-first semantics.
         user_profile_image = profile_image
     else:
         user_profile_image = None
@@ -103,6 +148,7 @@ async def update_user_info(
 
     logger.info("Updating user %s with data keys: %s", user_id, list(user_data.keys()))
     logger.debug("[routes.user] Updating user %s with keys: %s", user_id, list(user_data.keys()))
+
     try:
         updated_user = await update_user(db=db, user_id=user_id, user_data=user_data)
         logger.info("Update result for user %s: profile_image_url=%s, profile_image_public_id=%s", user_id, updated_user.profile_image_url, getattr(updated_user, 'profile_image_public_id', None))
@@ -113,6 +159,22 @@ async def update_user_info(
         raise
     return updated_user
 
+# DELETE
+
+@router.delete("/users/{user_id}")
+async def remove_user(user_id: str, db: AsyncSession = Depends(get_async_db)):
+    logger.debug("[routes.user] DELETE /users/%s called", user_id)
+    try:
+        result = await delete_user(db=db, user_id=user_id)
+        logger.info("User %s deleted", user_id)
+        return result
+    except HTTPException as e:
+        logger.debug("[routes.user] DELETE /users/%s HTTPException: %s", user_id, e.detail)
+        raise
+    except Exception as e:
+        logger.exception("[routes.user] Failed to delete user %s: %s", user_id, e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete user: {e}")
+    return result
 
 @router.delete("/users/{user_id}/profile-image", response_model=UserResponse)
 async def delete_user_profile_image_route(
@@ -120,6 +182,7 @@ async def delete_user_profile_image_route(
     db: AsyncSession = Depends(get_async_db)
 ):
     logger.debug("[routes.user] DELETE /users/%s/profile-image called", user_id)
+
     try:
         updated_user = await delete_user_profile_image(db, user_id)
         logger.debug("[routes.user] Delete result for user %s: profile_image_url=%s profile_image_public_id=%s", user_id, getattr(updated_user, 'profile_image_url', None), getattr(updated_user, 'profile_image_public_id', None))

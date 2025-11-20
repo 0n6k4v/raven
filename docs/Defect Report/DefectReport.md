@@ -266,6 +266,38 @@
 * **Expected Result:**
     พื้นหลังควรเป็นสีดำแบบกึ่งโปร่งแสง (Semi-transparent) เช่น `rgba(0, 0, 0, 0.8)` เพื่อให้ดูนุ่มนวลและรับรู้ว่ามี Context อยู่ด้านหลัง
 
+### ☐ `BUG-014`: [Major] Filter ใน `UserManagement.jsx` ยังใช้งานไม่ได้
+
+* **ID:** `BUG-014`
+* **Status:** `Open`
+* **Severity:** Major
+* **Priority:** Medium
+* **Assignee:** `@Frontend` (TBD)
+* **Location:** `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx`
+* **Steps to Reproduce (STR):**
+    1. ไปที่หน้าผู้ดูแลระบบ -> ผู้ใช้งาน (`/userManagement`)
+    2. เปิดเมนู Filter หรือกรอกข้อมูลในช่อง Search
+    3. เลือกเงื่อนไข เช่น `ตำแหน่ง`, `ประเภทการใช้งาน`, หรือกรอกชื่อใน Search
+* **Actual Result:**
+    - UI ของ Filter แสดงขึ้น แต่การเลือกหรือกรอกค่ามิได้ส่งผลให้รายการในตารางเปลี่ยนแปลงตามเงื่อนไขที่เลือก (ผลลัพธ์ไม่กรอง)
+* **Expected Result:**
+    - รายการผู้ใช้ (ตาราง) ต้องกรองตามเงื่อนไขที่ผู้ใช้เลือก โดยสามารถผสมเงื่อนไขหลายตัวได้ (search + role + department) และผลต้องแสดงแบบเรียลไทม์หลังผู้ใช้กด “คัดกรอง” หรือกด Enter
+* **Additional Context/Notes:**
+    - สาเหตุเบื้องต้นที่คาดไว้:
+        - Frontend `handleApplyFilters` หรือ `filterUsers` function ไม่ได้ถูกเรียกใช้หรือ state ของ `appliedFilters` ไม่อัปเดตอย่างถูกต้อง
+        - หรือ route `GET /api/users/list` ไม่รองรับพารามิเตอร์ filter หากใช้ server-side filtering
+    - เนื่องจาก UserManagement จำเป็นต้องรองรับแบบ client-side หรือ server-side filter ทั้งคู่ ควรพิจารณา:
+        1. หากการกรองเป็น client-side: ตรวจสอบการใช้งาน `filterUsers()` และ state `appliedFilters` ที่ส่งค่าถูกต้อง
+        2. หากการกรองเป็น server-side: ให้ route ยิง query param เช่น `?role=admin` และปรับ API call ใน frontend ให้ส่งพารามิเตอร์
+* **Acceptance Criteria:**
+    - ใช้งาน Filter แล้วผลลัพธ์เปลี่ยนตามเงื่อนไขอย่างถูกต้อง (client-side หรือ server-side)
+    - Test cases added that cover search + filter combos, and filter/reset flow
+* **Files to check/fix:**
+    - `frontend/src/pages/Admin/SuperAdmin/UserManagement.jsx` (client-side filter/handler)
+    - Optionally backend `GET /api/users/list` for server-side support: `backend-api/app/routes/user.py`, `backend-api/app/controllers/user_controller.py`
+* **Notes:**
+    - If we adopt server-side filtering consistently, add API query param support and adjust pagination accordingly.
+
 ---
 
 ```powershell
