@@ -203,13 +203,19 @@
 
 ### 🔴 Bug (2 รายการ)
 **ชื่อ:** /createUser
+
 **Note:** UX ปุ่ม Upload ยังมีปัญหาเล็กน้อย
 
 **ชื่อ:** /userManagement
+
 **Note:** Pagination แสดงข้อมูลผิด
 
 ### 🟢 Done (4 รายการ)
+
 **ชื่อ:** /home
+
 **ชื่อ:** /camera
+
 **ชื่อ:** /upload
+
 **ชื่อ:** /edit-user

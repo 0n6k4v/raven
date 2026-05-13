@@ -18,14 +18,14 @@ router = APIRouter(tags=["history"])
 history_controller = HistoryController()
 
 
-# --- Helper function to extract current user or fallback ---
+# --- Helper function
 
 def get_user_info(current_user: UserInDB):
     user_id = getattr(current_user, "user_id", None)
     return user_id or "system"
 
 
-# --- Centralized exception handler for endpoint ---
+# --- exception handler ---
 
 async def handle_exceptions(func, *args, **kwargs):
     try:
@@ -57,7 +57,7 @@ async def create_history(
     db: AsyncSession = Depends(get_async_db),
     current_user: UserInDB = Depends(get_current_active_user_from_cookie),
 ):
-    # Validate required fields early
+    # Validate required fields
     required_fields = {
         "exhibit_id": exhibit_id,
         "discovery_date": discovery_date,

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom'
-import PrimaryBar from '../common/PrimaryBar';
-import SecondaryBar from '../common/SecondaryBar';
-import Navigation from '../common/NavigationBar';
+import PrimaryBar from './PrimaryBar';
+import SecondaryBar from './SecondaryBar';
+import Navigation from './NavigationBar';
 
 const Layout3 = () => {
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-[100dvh] w-full flex flex-col"> 
         <div className='hidden sm:block'>
             <PrimaryBar />
             <SecondaryBar />
@@ -15,7 +15,7 @@ const Layout3 = () => {
             <div className='hidden sm:block'>
                 <Navigation />
             </div>
-            <div className="flex flex-1 overflow-auto">
+            <div className="flex flex-1 overflow-hidden relative">
                 <Outlet />
             </div>
         </div>

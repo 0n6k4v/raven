@@ -1,12 +1,72 @@
-# React + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+## 📂 Directory Tree
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```text
+root/
+├── public/                  # Static assets (favicon, robots.txt, manifest.json)
+├── src/
+│   ├── assets/              # Images, Fonts, Global Styles
+│   │
+│   ├── components/          # ✅ GLOBAL SHARED UI (Dumb Components only)
+│   │   ├── ui/              # Atomic Elements (Button, Input, Card, Modal)
+│   │   ├── layout/          # Layout Components (Navbar, Sidebar, Footer)
+│   │   └── form/            # Form-specific components (DateField, Select)
+│   │
+│   ├── config/              # ✅ Environment & Global Configuration
+│   │   ├── env.js           # Env var validation
+│   │   └── theme.js         # Theme constants
+│   │
+│   ├── hooks/               # ✅ Global Hooks (useMediaQuery, useScroll, useOnClickOutside)
+│   │
+│   ├── lib/                 # ✅ 3rd Party Wrappers (Facade Pattern)
+│   │   ├── axios.js         # Axios Instance (Interceptors setup)
+│   │   ├── query.js         # React Query Client setup
+│   │   └── utils.js         # CN/Clsx className helpers
+│   │
+│   ├── stores/              # ✅ Global State (Zustand/Redux - เฉพาะที่เป็น Global จริงๆ)
+│   │   └── toastStore.js    # Notification State
+│   │
+│   ├── types/               # ✅ Shared Types (TypeScript only)
+│   │   └── api.types.ts     # Generic API Response types
+│   │
+│   ├── utils/               # ✅ Pure Functions / Helpers
+│   │   ├── date.js          # Date formatting
+│   │   ├── format.js        # Currency/Number formatting
+│   │   └── storage.js       # LocalStorage wrappers
+│   │
+│   ├── features/            # ⭐️ HERO: Business Logic แบ่งตาม Domain
+│   │   ├── auth/            # ตัวอย่าง Feature: Authentication
+│   │   │   ├── api/         # API calls (login, register, getUser)
+│   │   │   ├── components/  # Components เฉพาะของ Auth (LoginForm, ProtectedRoute)
+│   │   │   ├── hooks/       # Hooks เฉพาะของ Auth (useAuth, useLogin)
+│   │   │   ├── routes/      # 📍 Feature-specific Routes
+│   │   │   │   └── index.jsx # Define routes for this feature
+│   │   │   ├── stores/      # State เฉพาะของ Auth (authStore)
+│   │   │   ├── types/       # Types เฉพาะของ Auth
+│   │   │   └── index.js     # 🛡️ Public API (Barrel File) - Export เฉพาะที่จำเป็น
+│   │   │
+│   │   └── product/         # ตัวอย่าง Feature: Product
+│   │       ├── api/
+│   │       ├── components/
+│   │       ├── routes/
+│   │       └── index.js
+│   │
+│   ├── pages/               # 📄 Composition Layer (ประกอบร่าง)
+│   │   ├── LandingPage.jsx
+│   │   ├── NotFoundPage.jsx
+│   │   └── ... (Pages อื่นๆ ที่เรียกใช้ Feature Components)
+│   │
+│   ├── routes/              # 🚦 Main Router Configuration
+│   │   └── index.jsx        # รวม Route จากทุก Feature เข้าด้วยกัน
+│   │
+│   ├── App.jsx              # Provider Setup (Theme, QueryClient, AuthProvider)
+│   └── main.jsx             # Application Entry Point
+│
+├── .env                     # Environment Variables
+├── .eslintrc.cjs            # Linting Config
+├── vite.config.js           # Vite Configuration
+└── package.json
+```

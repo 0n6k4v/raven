@@ -1,96 +1,22 @@
-import React, { lazy, Suspense, memo } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import React, { Suspense } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import AppRoutes from './routes/index.jsx';
+import { AuthProvider } from './features/auth/context';
 
-/* ========================= MAIN COMPONENT ========================= */
-const Layout = lazy(() => import('./components/layout/Layout'))
-const Layout2 = lazy(() => import('./components/layout/Layout2'))
-const Layout3 = lazy(() => import('./components/layout/Layout3'))
-const ProtectedRoute = lazy(() => import('./components/common/ProtectedRoute'))
-const Login = lazy(() => import('./pages/Login'))
-const Home = lazy(() => import('./pages/Home'))
-const CreateUser = lazy(() => import('./pages/Admin/SuperAdmin/CreateUser'))
-const UserManagement = lazy(() => import('./pages/Admin/SuperAdmin/UserManagement'))
-const UserProfile = lazy(() => import('./pages/Admin/SuperAdmin/UserProfile'))
-const EditUserProfile = lazy(() => import('./pages/Admin/SuperAdmin/EditUserProfile'))
-const AdminNarcoticCatalog = lazy(() => import('./pages/Admin/NarcoticAdmin/AdminNarcoticCatalog'))
-const CreateNarcotic = lazy(() => import('./pages/Admin/NarcoticAdmin/CreateNarcotic'))
-const Map = lazy(() => import('./pages/Map'))
-const Camera = lazy(() => import('./pages/Camera'))
-const ImagePreview = lazy(() => import('./pages/ImagePreview'))
-const CandidateShow = lazy(() => import('./pages/CandidateShow'))
-const History = lazy(() => import('./pages/History'))
-const EvidenceHistoryProfile = lazy(() => import('./pages/EvidenceHistoryProfile'))
-const EvidenceProfile = lazy(() => import('./pages/EvidenceProfile'))
-const SaveToHistory = lazy(() => import('./pages/SaveToHistory'))
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-screen w-screen"></div>
+);
 
-const App = memo(function App() {
+const App = () => {
   return (
-    <Suspense fallback={null}>
-      <Routes>
-        {/* Public routes */}
-        <Route path='/login' element={<Login />} />
-        <Route path='/camera' element={<ProtectedRoute><Camera /></ProtectedRoute>} />
-        <Route path='/imagePreview' element={<ProtectedRoute><ImagePreview /></ProtectedRoute>} />
-        <Route path='/candidateShow' element={<ProtectedRoute><CandidateShow /></ProtectedRoute>} />
-        {/* Protected routes */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          {/* Common Pages */}
-          <Route path='/home' element={<Home />} />
-          <Route path='/map' element={<Map />} />
-
-          {/* Super Admin Pages */}
-          <Route path='/createUser' element={<CreateUser />} />
-          <Route path='/userManagement' element={<UserManagement />} />
-          <Route path='/user-profile/:id' element={<UserProfile />} />
-          <Route path='/edit-user/:id' element={<EditUserProfile />} />
-        </Route>
-
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout2 />
-            </ProtectedRoute>
-          }
-        >
-          {/* Narcotics Admin */}
-          <Route path='/admin/narcotics/catalog-management' element={<AdminNarcoticCatalog />} />
-
-          {/* History */}
-          <Route path='/history' element={<History />} />
-        </Route>
-
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout3 />
-            </ProtectedRoute>
-          }
-        >
-          {/* Evidence Profile */}
-          <Route path='/evidenceProfile' element={<EvidenceProfile />} />
-          <Route path='/evidenceProfile/gallery' element={<EvidenceProfile />} />
-          <Route path='/evidenceProfile/history' element={<EvidenceProfile />} />
-          <Route path='/evidenceProfile/map' element={<EvidenceProfile />} />
-          <Route path='/evidenceProfile/save-to-record' element={<SaveToHistory />} />
-
-          {/* Narcotics Admin */}
-          <Route path='/admin/narcotics/create-narcotic' element={<CreateNarcotic />} />
-
-          {/* History */}
-          <Route path='/history/detail' element={<EvidenceHistoryProfile />} />
-        </Route>
-
-        {/* Fallback route for unmatched paths */}
-        <Route path="*" element={<Login />} />
-      </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </Suspense>
   );
-});
+};
 
 export default App;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom'
-import PrimaryBar from '../common/PrimaryBar';
-import SecondaryBar from '../common/SecondaryBar';
-import Navigation from '../common/NavigationBar';
+import PrimaryBar from './PrimaryBar';
+import SecondaryBar from './SecondaryBar';
+import Navigation from './NavigationBar';
 
 const Layout2 = () => {
   return (

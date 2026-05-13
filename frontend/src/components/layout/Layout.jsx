@@ -1,10 +1,9 @@
 import React, { memo } from 'react';
 import { Outlet } from 'react-router-dom';
-import PrimaryBar from '../common/PrimaryBar';
-import SecondaryBar from '../common/SecondaryBar';
-import Navigation from '../common/NavigationBar';
+import PrimaryBar from './PrimaryBar';
+import SecondaryBar from './SecondaryBar';
+import Navigation from './NavigationBar';
 
-/* PRESENTATIONAL COMPONENTS */
 const LayoutContainer = memo(function LayoutContainer() {
   return (
     <div className="h-screen flex flex-col">
@@ -20,7 +19,6 @@ const LayoutContainer = memo(function LayoutContainer() {
   );
 });
 
-/* MAIN COMPONENT */
 const Layout = LayoutContainer;
 
 export default Layout;

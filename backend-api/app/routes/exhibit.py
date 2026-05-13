@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, status, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.db_config import get_async_db
@@ -6,6 +7,8 @@ from app.schemas.narcotic_example_image_schema import NarcoticExampleImageBase, 
 from app.controllers.exhibit_controller import ExhibitController
 from app.controllers.narcotic_controller import NarcoticController
 from app.config.cloudinary_config import upload_image_to_cloudinary
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["exhibits"])
 
